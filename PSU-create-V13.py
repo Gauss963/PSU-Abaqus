@@ -188,6 +188,8 @@ for inst in (inst_left, inst_right, inst_spr, inst_plt, ctr_inst):
     asm.seedPartInstance(regions=(inst,), size=2.00)
     asm.generateMesh(regions=(inst,))
 
+del mdb.models['Model-1']
+
 # ---------------------------------------------------------------------------
 # 9. Job
 # ---------------------------------------------------------------------------
