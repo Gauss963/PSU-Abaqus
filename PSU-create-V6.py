@@ -1,0 +1,208 @@
+# -*- coding: utf-8 -*-
+"""
+complete_model_v6.py – build the block assembly, apply BCs & loads, mesh,
+and write an input file.  Fully compatible with both legacy and 2022+ Abaqus.
+
+Key fix: isolate only the four vertical edges of the center block for chamfering;
+legacy API requires positional arguments (length, length2).
+"""
+
+from abaqus import mdb
+from abaqusConstants import *
+
+# ---------------------------------------------------------------------------
+# 0. Geometry parameters
+# ---------------------------------------------------------------------------
+W, H, DEPTH  = 100.0, 160.0, 50.0      # side-block   width, height, depth
+CENTER_D     = 60.0                    # center-block extrusion depth
+SPR_W, SPR_H, SPR_D = 40.0, 80.0, 40.0 # spring       w, h, d
+PL_W,  PL_H,  PL_D = 90.0, 12.7, 60.0  # steel plate  w, h, d
+CHAMFER      = 5.0                     # bevel size   (mm)
+
+# assembly translation vectors
+T_LEFT  = (-100.0, -20.0,   5.0)
+T_RIGHT = ( 100.0, -20.0, -45.0)
+T_SPR   = (-20.0, 112.7,  10.0)
+T_PLT   = (-45.0, 100.0,   0.0)
+
+# ---------------------------------------------------------------------------
+# 1. Model container
+# ---------------------------------------------------------------------------
+MODEL = mdb.Model(name='Block-Assembly')
+
+# ---------------------------------------------------------------------------
+# 2-1  Side block – bevel already in the sketch
+# ---------------------------------------------------------------------------
+sk_side = MODEL.ConstrainedSketch(name='sk_side', sheetSize=400.0)
+poly = [(-W/2, -H/2),
+        ( W/2-CHAMFER, -H/2),
+        ( W/2,        -H/2+CHAMFER),
+        ( W/2,         H/2-CHAMFER),
+        ( W/2-CHAMFER,  H/2),
+        (-W/2,  H/2)]
+for i in range(len(poly)):
+    sk_side.Line(point1=poly[i], point2=poly[(i+1) % len(poly)])
+
+side_part = MODEL.Part(name='side_block',
+                       dimensionality=THREE_D,
+                       type=DEFORMABLE_BODY)
+side_part.BaseSolidExtrude(sketch=sk_side, depth=DEPTH)
+
+# ---------------------------------------------------------------------------
+# 2-2  Center block – add 5 mm chamfer on the four vertical (Z) edges only
+# ---------------------------------------------------------------------------
+sk_ctr = MODEL.ConstrainedSketch(name='sk_center', sheetSize=400.0)
+sk_ctr.rectangle(point1=(-50, -100), point2=(50, 100))
+center_part = MODEL.Part(name='center_block',
+                         dimensionality=THREE_D,
+                         type=DEFORMABLE_BODY)
+center_part.BaseSolidExtrude(sketch=sk_ctr, depth=CENTER_D)
+
+def add_chamfer_vertical(part, size, depth):
+    """Chamfer only the four vertical Z-edges of a rectangular prism."""
+    midZ = 0.5 * depth
+    # four vertical edges (x = ±50, y = ±100, z varies)
+    verts = [( 50,  100, midZ),
+             ( 50, -100, midZ),
+             (-50,  100, midZ),
+             (-50, -100, midZ)]
+    edge_arr = part.edges.findAt(*[(v,) for v in verts])
+
+    if hasattr(part, 'ChamferEdge'):                    # 2022+
+        part.ChamferEdge(edgeList=edge_arr,
+                         lengths=(size, size))
+    else:                                               # legacy – positional args only
+        part.Chamfer(edge_arr, size, size)
+
+add_chamfer_vertical(center_part, CHAMFER, CENTER_D)
+
+# ---------------------------------------------------------------------------
+# 2-3  Spring  & 2-4  Steel plate
+# ---------------------------------------------------------------------------
+sk_spr = MODEL.ConstrainedSketch(name='sk_spring', sheetSize=200.0)
+sk_spr.rectangle((0, 0), (SPR_W, SPR_H))
+spring_part = MODEL.Part(name='spring', dimensionality=THREE_D,
+                         type=DEFORMABLE_BODY)
+spring_part.BaseSolidExtrude(sketch=sk_spr, depth=SPR_D)
+
+sk_plt = MODEL.ConstrainedSketch(name='sk_plate', sheetSize=200.0)
+sk_plt.rectangle((0, 0), (PL_W, PL_H))
+plate_part = MODEL.Part(name='steel_plate', dimensionality=THREE_D,
+                        type=DEFORMABLE_BODY)
+plate_part.BaseSolidExtrude(sketch=sk_plt, depth=PL_D)
+
+# ---------------------------------------------------------------------------
+# 3. Materials & sections
+# ---------------------------------------------------------------------------
+mat_gra = MODEL.Material(name='granite')
+mat_gra.Density(table=((2.65426e-9,),))
+mat_gra.Elastic(table=((30000.0, 0.25),))
+MODEL.HomogeneousSolidSection(name='granite_sec', material='granite')
+
+mat_pmma = MODEL.Material(name='PMMA')
+mat_pmma.Elastic(table=((3000.0, 0.35),))
+MODEL.HomogeneousSolidSection(name='pmma_sec', material='PMMA')
+
+mat_steel = MODEL.Material(name='steel')
+mat_steel.Elastic(table=((200000.0, 0.30),))
+MODEL.HomogeneousSolidSection(name='steel_sec', material='steel')
+
+for part in (side_part, center_part):
+    part.SectionAssignment(region=part.Set(cells=part.cells, name='all'),
+                           sectionName='granite_sec')
+spring_part.SectionAssignment(region=spring_part.Set(cells=spring_part.cells,
+                                                     name='spr_set'),
+                              sectionName='pmma_sec')
+plate_part.SectionAssignment(region=plate_part.Set(cells=plate_part.cells,
+                                                   name='plt_set'),
+                             sectionName='steel_sec')
+
+# ---------------------------------------------------------------------------
+# 4. Assembly & positioning
+# ---------------------------------------------------------------------------
+asm = MODEL.rootAssembly
+asm.DatumCsysByDefault(CARTESIAN)
+
+ctr_inst = asm.Instance(name='center_block', part=center_part, dependent=OFF)
+
+inst_left  = asm.Instance(name='side_left',  part=side_part,  dependent=OFF)
+asm.translate(instanceList=(inst_left,),  vector=T_LEFT)
+
+inst_right = asm.Instance(name='side_right', part=side_part,  dependent=OFF)
+asm.rotate(instanceList=(inst_right,),
+           axisPoint=(0.0, 0.0, 0.0),
+           axisDirection=(0.0, 1.0, 0.0),
+           angle=180.0)
+asm.translate(instanceList=(inst_right,), vector=T_RIGHT)
+
+inst_spr = asm.Instance(name='spring', part=spring_part, dependent=OFF)
+asm.translate(instanceList=(inst_spr,), vector=T_SPR)
+
+inst_plt = asm.Instance(name='steel_plate', part=plate_part, dependent=OFF)
+asm.translate(instanceList=(inst_plt,), vector=T_PLT)
+
+# ---------------------------------------------------------------------------
+# 5. Boundary conditions
+# ---------------------------------------------------------------------------
+y_bot = -H/2 + T_LEFT[1]                            # -80 – 20 = -100 mm
+
+bot_L = inst_left.faces.getByBoundingBox(yMin=y_bot-1e-3, yMax=y_bot+1e-3)
+bot_R = inst_right.faces.getByBoundingBox(yMin=y_bot-1e-3, yMax=y_bot+1e-3)
+asm.Set(name='left_bot',  faces=bot_L)
+asm.Set(name='right_bot', faces=bot_R)
+
+MODEL.DisplacementBC('BC_left_bot',  'Initial', asm.sets['left_bot'],  u2=0.0)
+MODEL.DisplacementBC('BC_right_bot', 'Initial', asm.sets['right_bot'], u2=0.0)
+
+x_sym = -W/2 + T_LEFT[0]                            # -150 mm
+lf = inst_left.faces.getByBoundingBox(xMin=x_sym-1e-3, xMax=x_sym+1e-3)
+asm.Set(name='left_face', faces=lf)
+MODEL.DisplacementBC('BC_left_face', 'Initial', asm.sets['left_face'], u1=0.0)
+
+z_L = DEPTH + T_LEFT[2]                             # 55 mm
+z_R = -DEPTH + T_RIGHT[2]                           # -95 mm
+edge_L = inst_left.edges.getByBoundingBox(zMin=z_L-1e-3, zMax=z_L+1e-3)
+edge_R = inst_right.edges.getByBoundingBox(zMin=z_R-1e-3, zMax=z_R+1e-3)
+asm.Set(name='front_edges_L', edges=edge_L)
+asm.Set(name='front_edges_R', edges=edge_R)
+
+MODEL.DisplacementBC('BC_front_L', 'Initial',
+                     asm.sets['front_edges_L'], u3=0.0)
+MODEL.DisplacementBC('BC_front_R', 'Initial',
+                     asm.sets['front_edges_R'], u3=0.0)
+
+# ---------------------------------------------------------------------------
+# 6. Analysis steps
+# ---------------------------------------------------------------------------
+MODEL.StaticStep(name='Normal_Load', previous='Initial', nlgeom=ON)
+MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load')
+
+# ---------------------------------------------------------------------------
+# 7. Loads
+# ---------------------------------------------------------------------------
+x_norm =  W/2 + T_LEFT[0]                            # -50 mm
+face_norm = inst_left.faces.getByBoundingBox(xMin=x_norm-1e-3,
+                                             xMax=x_norm+1e-3)
+asm.Surface(name='Surf_norm', side1Faces=face_norm)
+MODEL.Pressure('normal_load', 'Normal_Load',
+               asm.surfaces['Surf_norm'], magnitude=10.0)
+
+y_top_spr = SPR_H + T_SPR[1]                         # 192.7 mm
+top_spr = inst_spr.faces.getByBoundingBox(yMin=y_top_spr-1e-3,
+                                          yMax=y_top_spr+1e-3)
+asm.Surface(name='Surf_shear', side1Faces=top_spr)
+MODEL.Pressure('shear_load', 'Shear_Load',
+               asm.surfaces['Surf_shear'], magnitude=10.0)
+
+# ---------------------------------------------------------------------------
+# 8. Meshing (coarse demo)
+# ---------------------------------------------------------------------------
+for inst in (inst_left, inst_right, inst_spr, inst_plt, ctr_inst):
+    asm.seedPartInstance(regions=(inst,), size=20.0)
+asm.generateMesh()
+
+# ---------------------------------------------------------------------------
+# 9. Job
+# ---------------------------------------------------------------------------
+job = mdb.Job(name='BlockJob', model='Block-Assembly')
+job.writeInput()        # use job.submit() to run the analysis
