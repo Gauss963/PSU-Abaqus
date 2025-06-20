@@ -128,6 +128,8 @@ asm.translate(instanceList=('steel_plate',), vector=T_PLT)
 
 asm.Surface(name='Center-Right', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#80 ]', ), ))
 asm.Surface(name='Center-Left', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#10 ]', ), ))
+asm.Surface(name='Left-Right', side1Faces=asm.instances['side_left'].faces.getSequenceFromMask(('[#4 ]', ), ))
+asm.Surface(name='Right-Left', side1Faces=asm.instances['side_right'].faces.getSequenceFromMask(('[#4 ]', ), ))
 
 
 # ---------------------------------------------------------------------------
