@@ -179,7 +179,24 @@ y_top_spr = SPR_H + T_SPR[1]
 inst_spr = asm.instances['spring']
 top_spr = inst_spr.faces.getByBoundingBox(yMin=y_top_spr-1e-3, yMax=y_top_spr+1e-3)
 asm.Surface(name='Surf_shear', side1Faces=top_spr)
-MODEL.Pressure('shear_load', 'Shear_Load', asm.surfaces['Surf_shear'], magnitude=10.0)
+
+
+# MODEL.Pressure('shear_load', 'Shear_Load', asm.surfaces['Surf_shear'], magnitude=10.0) # This is force control.
+
+MODEL.DisplacementBC(
+    name='shear_disp',
+    createStepName='Shear_Load',
+    region=asm.surfaces['Surf_shear'],
+    u1=UNSET,
+    u2=0.5,
+    u3=UNSET,
+    ur1=UNSET, ur2=UNSET, ur3=UNSET,
+    amplitude='Shear_Amplitude',
+    fixed=OFF,
+    distributionType=UNIFORM,
+    fieldName='',
+    localCsys=None
+)
 
 # ---------------------------------------------------------------------------
 # 8. Meshing
