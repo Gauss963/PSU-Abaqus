@@ -2,20 +2,27 @@ from abaqus import mdb
 from abaqusConstants import *
 
 # ---------------------------------------------------------------------------
-# 0. Geometry parameters
+# 0. Parameters
 # ---------------------------------------------------------------------------
+
+# Geometry parameters
 W,  H,  DEPTH   = 100.0, 160.0, 50.0          # side-block  X, Y, Z
 CENTER_D        = 60.0                        # center-block extrusion depth
 SPR_W, SPR_H, SPR_D = 40.0, 80.0, 40.0        # spring      X, Y, Z
 PL_W,  PL_H,  PL_D = 90.0, 12.7, 60.0         # steel plate X, Y, Z
 CHAMFER         = 5.0                         # chamfer size (mm)
-MESH_SIZE = 2.00
 
 # placement vectors (assembly coordinates)
 T_LEFT  = (-100.0, -20.0,   5.0)
 T_RIGHT = (0.0, -20.0, 5.0)
 T_SPR   = (-20.0, 112.7,  10.0)
 T_PLT   = (-45.0, 100.0,   0.0)
+
+# Simulation parameters
+MESH_SIZE = 2.00
+RUPTURE_START = 55.00
+RUPTURE_POSITION = 0.00
+
 
 # ---------------------------------------------------------------------------
 # 1. Model container
@@ -64,6 +71,15 @@ def add_chamfer(part, size):
     part.Chamfer(length=size, edgeList=tuple(vertical_edges))
 
 add_chamfer(center_part, CHAMFER)
+
+# Partition center_block with XY plane at Z=20
+cell = center_part.cells.getSequenceFromMask(('[#1 ]', ), )
+center_part.PartitionCellByPlaneThreePoints(
+    cells=cell,
+    point1=(10.0, RUPTURE_START, 00.0),
+    point2=(00.0, RUPTURE_START, 00.0),
+    point3=(00.0, RUPTURE_START, 10.0)
+)
 
 # ---------------------------------------------------------------------------
 # 2-3  Spring & 2-4  Steel plate
@@ -127,10 +143,31 @@ asm.translate(instanceList=('spring',),      vector=T_SPR)
 asm.translate(instanceList=('steel_plate',), vector=T_PLT)
 
 
-asm.Surface(name='Center-Right', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#80 ]', ), ))
-asm.Surface(name='Center-Left', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#10 ]', ), ))
+asm.Surface(name='Center-Left', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#2 ]', ), ))
+asm.Surface(name='Center-Right', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#10000 ]', ), ))
 asm.Surface(name='Left-Right', side1Faces=asm.instances['side_left'].faces.getSequenceFromMask(('[#4 ]', ), ))
 asm.Surface(name='Right-Left', side1Faces=asm.instances['side_right'].faces.getSequenceFromMask(('[#4 ]', ), ))
+
+
+MODEL.Tie(
+    name='Left-Tie',
+    main=asm.surfaces['Left-Right'],
+    secondary=asm.surfaces['Center-Left'],
+    positionToleranceMethod=COMPUTED,
+    adjust=ON,
+    tieRotations=ON,
+    thickness=ON
+)
+
+MODEL.Tie(
+    name='Right-Tie',
+    main=asm.surfaces['Center-Left'],
+    secondary=asm.surfaces['Right-Left'],
+    positionToleranceMethod=COMPUTED,
+    adjust=ON,
+    tieRotations=ON,
+    thickness=ON
+)
 
 
 # ---------------------------------------------------------------------------
