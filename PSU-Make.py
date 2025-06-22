@@ -161,7 +161,9 @@ asm.Surface(name='Center-Right-friction', side1Faces=asm.instances['center_block
 
 
 asm.Surface(name='Left-Right-Tie',   side1Faces=asm.instances['side_left'].faces.getSequenceFromMask(('[#80 ]', ), ))
+asm.Surface(name='Left-Right-friction',   side1Faces=asm.instances['side_left'].faces.getSequenceFromMask(('[#4 ]', ), ))
 asm.Surface(name='Right-Left-Tie',   side1Faces=asm.instances['side_right'].faces.getSequenceFromMask(('[#80 ]', ), ))
+asm.Surface(name='Right-Left-friction',   side1Faces=asm.instances['side_right'].faces.getSequenceFromMask(('[#4 ]', ), ))
 
 
 asm.Surface(name='steel_plate-Top',  side1Faces=asm.instances['steel_plate'].faces.getSequenceFromMask(('[#2 ]', ), ))
@@ -211,6 +213,40 @@ MODEL.Tie(
     adjust=ON,
     tieRotations=ON,
     thickness=ON
+)
+
+MODEL.ContactProperty('FrictionArea')
+MODEL.interactionProperties['FrictionArea'].TangentialBehavior(
+    dependencies=0, directionality=ISOTROPIC, elasticSlipStiffness=None,
+    formulation=PENALTY, fraction=0.005, maximumElasticSlip=FRACTION,
+    pressureDependency=OFF, shearStressLimit=None, slipRateDependency=OFF,
+    table=((0.35,),), temperatureDependency=OFF
+)
+
+MODEL.SurfaceToSurfaceContactStd(
+    name='FrictionInteraction_Left',
+    createStepName='Initial',
+    main=asm.surfaces['Center-Left-friction'],
+    secondary=asm.surfaces['Left-Right-friction'],
+    sliding=FINITE,
+    interactionProperty='FrictionArea',
+    adjustMethod=NONE,
+    initialClearance=OMIT,
+    datumAxis=None,
+    clearanceRegion=None
+)
+
+MODEL.SurfaceToSurfaceContactStd(
+    name='FrictionInteraction_Right',
+    createStepName='Initial',
+    main=asm.surfaces['Center-Right-friction'],
+    secondary=asm.surfaces['Right-Left-friction'],
+    sliding=FINITE,
+    interactionProperty='FrictionArea',
+    adjustMethod=NONE,
+    initialClearance=OMIT,
+    datumAxis=None,
+    clearanceRegion=None
 )
 
 
