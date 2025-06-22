@@ -153,12 +153,22 @@ asm.translate(instanceList=('spring',),      vector=T_SPR)
 asm.translate(instanceList=('steel_plate',), vector=T_PLT)
 
 
+asm.Surface(name='Center-Top',  side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#8000 ]', ), ))
 asm.Surface(name='Center-Left-Tie',  side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#2 ]', ), ))
 asm.Surface(name='Center-Right-Tie', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#10000 ]', ), ))
-asm.Surface(name='Left-Right-Tie',   side1Faces=asm.instances['side_left'].faces.getSequenceFromMask(('[#80 ]', ), ))
-asm.Surface(name='Right-Left-Tie',   side1Faces=asm.instances['side_right'].faces.getSequenceFromMask(('[#80 ]', ), ))
 asm.Surface(name='Center-Left-friction',  side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#2000 ]', ), ))
 asm.Surface(name='Center-Right-friction', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#80 ]', ), ))
+
+
+asm.Surface(name='Left-Right-Tie',   side1Faces=asm.instances['side_left'].faces.getSequenceFromMask(('[#80 ]', ), ))
+asm.Surface(name='Right-Left-Tie',   side1Faces=asm.instances['side_right'].faces.getSequenceFromMask(('[#80 ]', ), ))
+
+
+asm.Surface(name='steel_plate-Top',  side1Faces=asm.instances['steel_plate'].faces.getSequenceFromMask(('[#2 ]', ), ))
+asm.Surface(name='steel_plate-bottom', side1Faces=asm.instances['steel_plate'].faces.getSequenceFromMask(('[#8 ]', ), ))
+
+
+asm.Surface(name='spring-bottom', side1Faces=asm.instances['spring'].faces.getSequenceFromMask(('[#8 ]', ), ))
 
 
 
@@ -177,6 +187,26 @@ MODEL.Tie(
     name='Right-Tie',
     main=asm.surfaces['Center-Left-Tie'],
     secondary=asm.surfaces['Right-Left-Tie'],
+    positionToleranceMethod=COMPUTED,
+    adjust=ON,
+    tieRotations=ON,
+    thickness=ON
+)
+
+MODEL.Tie(
+    name='Spring-Steel-Tie',
+    main=asm.surfaces['spring-bottom'],
+    secondary=asm.surfaces['steel_plate-Top'],
+    positionToleranceMethod=COMPUTED,
+    adjust=ON,
+    tieRotations=ON,
+    thickness=ON
+)
+
+MODEL.Tie(
+    name='Steel-Center-Tie',
+    main=asm.surfaces['steel_plate-bottom'],
+    secondary=asm.surfaces['Center-Top'],
     positionToleranceMethod=COMPUTED,
     adjust=ON,
     tieRotations=ON,
