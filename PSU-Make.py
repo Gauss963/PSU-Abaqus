@@ -9,6 +9,7 @@ CENTER_D        = 60.0                        # center-block extrusion depth
 SPR_W, SPR_H, SPR_D = 40.0, 80.0, 40.0        # spring      X, Y, Z
 PL_W,  PL_H,  PL_D = 90.0, 12.7, 60.0         # steel plate X, Y, Z
 CHAMFER         = 5.0                         # chamfer size (mm)
+MESH_SIZE = 2.00
 
 # placement vectors (assembly coordinates)
 T_LEFT  = (-100.0, -20.0,   5.0)
@@ -182,11 +183,14 @@ asm.Surface(name='Surf_shear', side1Faces=top_spr)
 
 
 # MODEL.Pressure('shear_load', 'Shear_Load', asm.surfaces['Surf_shear'], magnitude=10.0) # This is force control.
-
+region=MODEL.rootAssembly.Set(
+    name='Set_shear',
+    faces=asm.surfaces['Surf_shear'].faces
+)
 MODEL.DisplacementBC(
     name='shear_disp',
     createStepName='Shear_Load',
-    region=asm.surfaces['Surf_shear'],
+    region=MODEL.rootAssembly.sets['Set_shear'],
     u1=UNSET,
     u2=0.5,
     u3=UNSET,
@@ -204,7 +208,7 @@ MODEL.DisplacementBC(
 inst_plt = asm.instances['steel_plate']
 ctr_inst = asm.instances['center_block']
 for inst in (inst_left, inst_right, inst_spr, inst_plt, ctr_inst):
-    asm.seedPartInstance(regions=(inst,), size=2.00)
+    asm.seedPartInstance(regions=(inst,), size=MESH_SIZE)
     asm.generateMesh(regions=(inst,))
 
 del mdb.models['Model-1']
