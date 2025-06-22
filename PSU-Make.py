@@ -22,6 +22,7 @@ T_PLT   = (-45.0, 100.0,   0.0)
 MESH_SIZE = 2.00
 RUPTURE_START = 55.00
 RUPTURE_POSITION = 0.00
+RUPTURE_POSITION = 75.00  # Position of the rupture plane from the top of the center block
 
 
 # ---------------------------------------------------------------------------
@@ -30,7 +31,7 @@ RUPTURE_POSITION = 0.00
 MODEL = mdb.Model(name='Block-Assembly')
 
 # ---------------------------------------------------------------------------
-# 2-1  Side block – 45 bevel in sketch
+# 2-1  Side block - 45 bevel in sketch
 # ---------------------------------------------------------------------------
 sk_side = MODEL.ConstrainedSketch(name='sk_side', sheetSize=400.0)
 pts = [(-W/2, -H/2),
@@ -72,13 +73,22 @@ def add_chamfer(part, size):
 
 add_chamfer(center_part, CHAMFER)
 
-# Partition center_block with XY plane at Z=20
+# Partition center_block with XY plane at Z = RUPTURE_START + RUPTURE_POSITION
 cell = center_part.cells.getSequenceFromMask(('[#1 ]', ), )
 center_part.PartitionCellByPlaneThreePoints(
     cells=cell,
-    point1=(10.0, RUPTURE_START, 00.0),
-    point2=(00.0, RUPTURE_START, 00.0),
-    point3=(00.0, RUPTURE_START, 10.0)
+    point1=(10.0, RUPTURE_START - RUPTURE_POSITION, 00.0),
+    point2=(00.0, RUPTURE_START - RUPTURE_POSITION, 00.0),
+    point3=(00.0, RUPTURE_START - RUPTURE_POSITION, 10.0)
+)
+
+# Parition side_block with XY plane at Z = RUPTURE_START + RUPTURE_POSITION
+side_cell = side_part.cells.getSequenceFromMask(('[#1 ]', ), )
+side_part.PartitionCellByPlaneThreePoints(
+    cells=side_cell,
+    point1=(10.0, RUPTURE_START - RUPTURE_POSITION + 20, 00.0),
+    point2=(00.0, RUPTURE_START - RUPTURE_POSITION + 20, 00.0),
+    point3=(00.0, RUPTURE_START - RUPTURE_POSITION + 20, 10.0)
 )
 
 # ---------------------------------------------------------------------------
@@ -143,16 +153,20 @@ asm.translate(instanceList=('spring',),      vector=T_SPR)
 asm.translate(instanceList=('steel_plate',), vector=T_PLT)
 
 
-asm.Surface(name='Center-Left', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#2 ]', ), ))
-asm.Surface(name='Center-Right', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#10000 ]', ), ))
-asm.Surface(name='Left-Right', side1Faces=asm.instances['side_left'].faces.getSequenceFromMask(('[#4 ]', ), ))
-asm.Surface(name='Right-Left', side1Faces=asm.instances['side_right'].faces.getSequenceFromMask(('[#4 ]', ), ))
+asm.Surface(name='Center-Left-Tie',  side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#2 ]', ), ))
+asm.Surface(name='Center-Right-Tie', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#10000 ]', ), ))
+asm.Surface(name='Left-Right-Tie',   side1Faces=asm.instances['side_left'].faces.getSequenceFromMask(('[#80 ]', ), ))
+asm.Surface(name='Right-Left-Tie',   side1Faces=asm.instances['side_right'].faces.getSequenceFromMask(('[#80 ]', ), ))
+asm.Surface(name='Center-Left-friction',  side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#2000 ]', ), ))
+asm.Surface(name='Center-Right-friction', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#80 ]', ), ))
+
+
 
 
 MODEL.Tie(
     name='Left-Tie',
-    main=asm.surfaces['Left-Right'],
-    secondary=asm.surfaces['Center-Left'],
+    main=asm.surfaces['Left-Right-Tie'],
+    secondary=asm.surfaces['Center-Left-Tie'],
     positionToleranceMethod=COMPUTED,
     adjust=ON,
     tieRotations=ON,
@@ -161,8 +175,8 @@ MODEL.Tie(
 
 MODEL.Tie(
     name='Right-Tie',
-    main=asm.surfaces['Center-Left'],
-    secondary=asm.surfaces['Right-Left'],
+    main=asm.surfaces['Center-Left-Tie'],
+    secondary=asm.surfaces['Right-Left-Tie'],
     positionToleranceMethod=COMPUTED,
     adjust=ON,
     tieRotations=ON,
