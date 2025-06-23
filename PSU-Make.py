@@ -283,7 +283,18 @@ MODEL.DisplacementBC('BC_front_R', 'Initial', asm.sets['front_edges_R'], u3=0.0)
 MODEL.StaticStep(name='Normal_Load', previous='Initial', nlgeom=ON)
 MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load')
 
+# Strain energy analysis
+MODEL.HistoryOutputRequest(
+    name='H-Output-SystemU-Normal',
+    createStepName='Normal_Load',
+    variables=('ALLSE',)
+)
 
+MODEL.HistoryOutputRequest(
+    name='H-Output-SystemU-Shear',
+    createStepName='Shear_Load',
+    variables=('ALLSE',)
+)
 
 # ---------------------------------------------------------------------------
 # 7. Loads
