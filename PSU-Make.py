@@ -70,7 +70,7 @@ MESH_SIZE = 2.00
 RUPTURE_START = 55.00
 RUPTURE_POSITION = 0.00
 RUPTURE_POSITION = 75.00  # Position of the rupture plane from the top of the center block
-
+Shear_Amplitude = 3e-3
 
 # ---------------------------------------------------------------------------
 # 1. Model container
@@ -234,7 +234,7 @@ MODEL.Tie(
 
 MODEL.Tie(
     name='Right-Tie',
-    main=asm.surfaces['Center-Left-Tie'],
+    main=asm.surfaces['Center-Right-Tie'],
     secondary=asm.surfaces['Right-Left-Tie'],
     positionToleranceMethod=COMPUTED,
     adjust=ON,
@@ -267,8 +267,11 @@ MODEL.interactionProperties['FrictionArea'].TangentialBehavior(
     dependencies=0, directionality=ISOTROPIC, elasticSlipStiffness=None,
     formulation=PENALTY, fraction=0.005, maximumElasticSlip=FRACTION,
     pressureDependency=OFF, shearStressLimit=None, slipRateDependency=OFF,
-    table=((0.35,),), temperatureDependency=OFF
+    table=((0.70,),), temperatureDependency=OFF
 )
+MODEL.interactionProperties['FrictionArea'].NormalBehavior(
+    allowSeparation=ON, constraintEnforcementMethod=DEFAULT, 
+    pressureOverclosure=HARD)
 
 MODEL.SurfaceToSurfaceContactStd(
     name='FrictionInteraction_Left',
@@ -315,7 +318,7 @@ asm.Set(name='left_face', faces=lf)
 MODEL.DisplacementBC('BC_left_face', 'Initial', asm.sets['left_face'], u1=0.0)
 
 z_L = DEPTH + T_LEFT[2]
-z_R = DEPTH + T_RIGHT_CORRECTED[2]
+z_R = DEPTH + T_RIGHT[2]
 edge_L = inst_left.edges.getByBoundingBox(zMin=z_L-1e-3, zMax=z_L+1e-3)
 inst_right = asm.instances['side_right']
 edge_R = inst_right.edges.getByBoundingBox(zMin=z_R-1e-3, zMax=z_R+1e-3)
@@ -367,10 +370,10 @@ MODEL.DisplacementBC(
     createStepName='Shear_Load',
     region=MODEL.rootAssembly.sets['Set_shear'],
     u1=UNSET,
-    u2=0.5,
+    u2=-Shear_Amplitude,
     u3=UNSET,
     ur1=UNSET, ur2=UNSET, ur3=UNSET,
-    amplitude='Shear_Amplitude',
+    amplitude=UNSET,
     fixed=OFF,
     distributionType=UNIFORM,
     fieldName='',
@@ -387,6 +390,16 @@ for inst in (inst_left, inst_right, inst_spr, inst_plt, ctr_inst):
     asm.generateMesh(regions=(inst,))
 
 del mdb.models['Model-1']
+
+MODEL.FieldOutputRequest(createStepName='Normal_Load', 
+    name='Spring-Strain-Energy', rebar=EXCLUDE, region=
+    mdb.models['Block-Assembly'].rootAssembly.allInstances['spring'].sets['spring_set']
+    , sectionPoints=DEFAULT, variables=('ENER', 'ELEN', 'ELEDEN'))
+
+MODEL.FieldOutputRequest(createStepName='Normal_Load', 
+    name='Block-Strain-Energy', rebar=EXCLUDE, region=
+    mdb.models['Block-Assembly'].rootAssembly.allInstances['center_block'].sets['all']
+    , sectionPoints=DEFAULT, variables=('ENER', 'ELEN', 'ELEDEN'))
 
 # ---------------------------------------------------------------------------
 # 9. Job

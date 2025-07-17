@@ -107,15 +107,37 @@ z_spr_bot = T_SPR[2]
 spr_bot_faces = SPR_INST.faces.getByBoundingBox(zMin=z_spr_bot-1e-3, zMax=z_spr_bot+1e-3)
 asm.Surface(name='spring-bottom', side1Faces=spr_bot_faces)
 
-# steel plate top & bottom
-z_plt_bot = T_PLT[2]
-z_plt_top = T_PLT[2] + PL_D
-plt_bot_faces = PLT_INST.faces.getByBoundingBox(zMin=z_plt_bot-1e-3, zMax=z_plt_bot+1e-3)
-plt_top_faces = PLT_INST.faces.getByBoundingBox(zMin=z_plt_top-1e-3, zMax=z_plt_top+1e-3)
-asm.Surface(name='steel_plate-bottom', side1Faces=plt_bot_faces)
-asm.Surface(name='steel_plate-Top',    side1Faces=plt_top_faces)
+# steel plate top & bottom (auto-detect by vertex Z)
+plate_vert_z = [v.pointOn[0][2] for v in PLT_INST.vertices]
+if not plate_vert_z:
+    raise RuntimeError('Steel plate instance has no vertices – mesh may have failed')
 
-# Center block top (Z = CENTER_D)
+z_plt_top = max(plate_vert_z)
+z_plt_bot = min(plate_vert_z)
+
+tol_plate = 1e-3  # starting tolerance (mm)
+plt_top_faces = PLT_INST.faces.getByBoundingBox(zMin=z_plt_top-tol_plate, zMax=z_plt_top+tol_plate)
+plt_bot_faces = PLT_INST.faces.getByBoundingBox(zMin=z_plt_bot-tol_plate, zMax=z_plt_bot+tol_plate)
+
+if len(plt_top_faces) == 0:
+    # widen tolerance until faces found (up to 1 mm)
+    for dt in (0.05, 0.1, 0.5, 1.0):
+        plt_top_faces = PLT_INST.faces.getByBoundingBox(zMin=z_plt_top-dt, zMax=z_plt_top+dt)
+        if plt_top_faces:
+            break
+if len(plt_top_faces) == 0:
+    raise RuntimeError('Could not identify top faces of steel plate – check geometry or tolerance')
+
+asm.Surface(name='steel_plate-Top',    side1Faces=plt_top_faces)
+asm.Surface(name='steel_plate-bottom', side1Faces=plt_bot_faces)
+
+# Center block top (Z auto-detected)
+ctr_vert_z = [v.pointOn[0][2] for v in CTR_INST.vertices]
+ctr_top_z = max(ctr_vert_z)
+ctr_top_faces = CTR_INST.faces.getByBoundingBox(zMin=ctr_top_z-tol_plate, zMax=ctr_top_z+tol_plate)
+asm.Surface(name='Center-Top', side1Faces=ctr_top_faces)
+
+# (Z = CENTER_D)
 ctr_top_faces = CTR_INST.faces.getByBoundingBox(zMin=CENTER_D-1e-3, zMax=CENTER_D+1e-3)
 asm.Surface(name='Center-Top', side1Faces=ctr_top_faces)
 
@@ -189,10 +211,16 @@ MODEL.TabularAmplitude(
     data=((0.0, 0.0), (1.0, 1.0))
 )
 
-asm.Surface(name='Surf_shear', side1Faces=plt_top_faces)
-MODEL.DisplacementBC(name='shear_disp', createStepName='Shear_Load',
-                     region=asm.surfaces['Surf_shear'], u2=0.5,
-                     amplitude='Shear_Amplitude')
+# Create a region from the plate top faces for shear displacement BC
+shear_region = regionToolset.Region(side1Faces=plt_top_faces)
+
+MODEL.DisplacementBC(
+    name='shear_disp',
+    createStepName='Shear_Load',
+    region=shear_region,
+    u2=0.5,
+    amplitude='Shear_Amplitude'
+)
 
 # ---------------------------------------------------------------
 # 9. Job submission helper – write input only
