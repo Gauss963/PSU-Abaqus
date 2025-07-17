@@ -1,5 +1,52 @@
-from abaqus import mdb
+# ------ FILE DEBUG BLOCK (always before any other import) -----------------
+# import os, sys, datetime, traceback
+# dbg = open("tie_debug.txt", "w", buffering=1)          # line-buffered
+# def dlog(*msg):
+#     dbg.write("[{}] ".format(datetime.datetime.now().isoformat()))
+#     dbg.write(" ".join(str(m) for m in msg) + "\n")
+
+# dlog("=== DEBUG START ===")
+# dlog("PYTHON =", sys.executable)
+
+# try:
+#     from abaqus import mdb
+#     dlog("import abaqus OK")
+#     dlog("models keys:", list(mdb.models.keys()))
+#     if mdb.models:
+#         mdl = next(iter(mdb.models.values()))
+#         dlog("MODEL type:", type(mdl))
+#         dlog("HAS Tie ?", hasattr(mdl, "Tie"))
+#         dlog("dir tie-like:", [a for a in dir(mdl) if "tie" in a.lower()][:8])
+# except Exception:
+#     dlog("IMPORT / ATTR ERROR:")
+#     dlog(traceback.format_exc())
+
+# dlog("sys.path[0:4] =", sys.path[:4])
+# dlog("PYTHONPATH =", os.environ.get("PYTHONPATH"))
+# dlog("=== DEBUG END ===")
+# dbg.flush()
+#-- END FILE DEBUG BLOCK -----------------------------------------------
+
+from driverUtils import executeOnCaeStartup
+executeOnCaeStartup()
+from caeModules import *
+from abaqus import mdb, session
 from abaqusConstants import *
+
+
+from part import *
+from material import *
+from section import *
+from assembly import *
+from step import *
+from interaction import *
+from load import *
+from mesh import *
+from optimization import *
+from job import *
+from sketch import *
+from visualization import *
+from connectorBehavior import *
 
 # ---------------------------------------------------------------------------
 # 0. Parameters
