@@ -37,11 +37,16 @@ T_SPR   = (-20.0, 112.7,  10.0)
 T_PLT   = (-45.0, 100.0,   0.0)
 
 # Simulation parameters
+FRICTION_COEFFICIENT = 0.70
+NORMAL_STRESS = 10.0  # MPa
+Y_PMMA = 3000.0       # MPa, PMMA yield stress
 MESH_SIZE = 2.00
 RUPTURE_START = 55.00
 RUPTURE_POSITION = 0.00
-RUPTURE_POSITION = 75.00  # Position of the rupture plane from the top of the center block
-Shear_Amplitude = 3e-3
+RUPTURE_POSITION = 75.00
+
+# SHEAR_AMPLITUDE = 3e-3
+SHEAR_AMPLITUDE = 2 * FRICTION_COEFFICIENT * NORMAL_STRESS * SPR_H / ( SPR_W * SPR_D * Y_PMMA)
 
 # ---------------------------------------------------------------------------
 # 1. Model container
@@ -176,18 +181,12 @@ asm.Surface(name='Center-Left-Tie',  side1Faces=asm.instances['center_block'].fa
 asm.Surface(name='Center-Right-Tie', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#10000 ]', ), ))
 asm.Surface(name='Center-Left-friction',  side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#2000 ]', ), ))
 asm.Surface(name='Center-Right-friction', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#80 ]', ), ))
-
-
 asm.Surface(name='Left-Right-Tie',   side1Faces=asm.instances['side_left'].faces.getSequenceFromMask(('[#80 ]', ), ))
 asm.Surface(name='Left-Right-friction',   side1Faces=asm.instances['side_left'].faces.getSequenceFromMask(('[#4 ]', ), ))
 asm.Surface(name='Right-Left-Tie',   side1Faces=asm.instances['side_right'].faces.getSequenceFromMask(('[#80 ]', ), ))
 asm.Surface(name='Right-Left-friction',   side1Faces=asm.instances['side_right'].faces.getSequenceFromMask(('[#4 ]', ), ))
-
-
 asm.Surface(name='steel_plate-Top',  side1Faces=asm.instances['steel_plate'].faces.getSequenceFromMask(('[#2 ]', ), ))
 asm.Surface(name='steel_plate-bottom', side1Faces=asm.instances['steel_plate'].faces.getSequenceFromMask(('[#8 ]', ), ))
-
-
 asm.Surface(name='spring-bottom', side1Faces=asm.instances['spring'].faces.getSequenceFromMask(('[#8 ]', ), ))
 
 
@@ -238,7 +237,7 @@ MODEL.interactionProperties['FrictionArea'].TangentialBehavior(
     dependencies=0, directionality=ISOTROPIC, elasticSlipStiffness=None,
     formulation=PENALTY, fraction=0.005, maximumElasticSlip=FRACTION,
     pressureDependency=OFF, shearStressLimit=None, slipRateDependency=OFF,
-    table=((0.70,),), temperatureDependency=OFF
+    table=((FRICTION_COEFFICIENT,),), temperatureDependency=OFF
 )
 MODEL.interactionProperties['FrictionArea'].NormalBehavior(
     allowSeparation=ON, constraintEnforcementMethod=DEFAULT, 
@@ -323,7 +322,7 @@ MODEL.HistoryOutputRequest(
 x_norm_right =  W/2 + T_RIGHT_CORRECTED[0]
 face_norm_right = inst_right.faces.getByBoundingBox(xMin=x_norm_right-1e-3, xMax=x_norm_right+1e-3)
 asm.Surface(name='Surf_norm_right', side1Faces=face_norm_right)
-MODEL.Pressure('normal_load', 'Normal_Load', asm.surfaces['Surf_norm_right'], magnitude=10.0)
+MODEL.Pressure('normal_load', 'Normal_Load', asm.surfaces['Surf_norm_right'], magnitude=NORMAL_STRESS)
 
 y_top_spr = SPR_H + T_SPR[1]
 inst_spr = asm.instances['spring']
@@ -340,7 +339,7 @@ MODEL.DisplacementBC(
     createStepName='Shear_Load',
     region=MODEL.rootAssembly.sets['Set_shear'],
     u1=UNSET,
-    u2=-Shear_Amplitude,
+    u2=-SHEAR_AMPLITUDE,
     u3=UNSET,
     ur1=UNSET, ur2=UNSET, ur3=UNSET,
     amplitude=UNSET,
