@@ -1,32 +1,3 @@
-# ------ FILE DEBUG BLOCK (always before any other import) -----------------
-# import os, sys, datetime, traceback
-# dbg = open("tie_debug.txt", "w", buffering=1)          # line-buffered
-# def dlog(*msg):
-#     dbg.write("[{}] ".format(datetime.datetime.now().isoformat()))
-#     dbg.write(" ".join(str(m) for m in msg) + "\n")
-
-# dlog("=== DEBUG START ===")
-# dlog("PYTHON =", sys.executable)
-
-# try:
-#     from abaqus import mdb
-#     dlog("import abaqus OK")
-#     dlog("models keys:", list(mdb.models.keys()))
-#     if mdb.models:
-#         mdl = next(iter(mdb.models.values()))
-#         dlog("MODEL type:", type(mdl))
-#         dlog("HAS Tie ?", hasattr(mdl, "Tie"))
-#         dlog("dir tie-like:", [a for a in dir(mdl) if "tie" in a.lower()][:8])
-# except Exception:
-#     dlog("IMPORT / ATTR ERROR:")
-#     dlog(traceback.format_exc())
-
-# dlog("sys.path[0:4] =", sys.path[:4])
-# dlog("PYTHONPATH =", os.environ.get("PYTHONPATH"))
-# dlog("=== DEBUG END ===")
-# dbg.flush()
-#-- END FILE DEBUG BLOCK -----------------------------------------------
-
 from driverUtils import executeOnCaeStartup
 executeOnCaeStartup()
 from caeModules import *
@@ -360,7 +331,6 @@ top_spr = inst_spr.faces.getByBoundingBox(yMin=y_top_spr-1e-3, yMax=y_top_spr+1e
 asm.Surface(name='Surf_shear', side1Faces=top_spr)
 
 
-# MODEL.Pressure('shear_load', 'Shear_Load', asm.surfaces['Surf_shear'], magnitude=10.0) # This is force control.
 region=MODEL.rootAssembly.Set(
     name='Set_shear',
     faces=asm.surfaces['Surf_shear'].faces
