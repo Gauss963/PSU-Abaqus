@@ -1,0 +1,24 @@
+      SUBROUTINE FRIC(FRIC, STATEV, PRESSURE, SLIP, TIME, DTIME,
+     & COORDS, NSTATV, KSTEP, KINC, NOEL, NPT, LAYER, KSPT, JMATYP,
+     & MATLAYO, LACCFLA)
+
+      INCLUDE 'ABA_PARAM.INC'
+
+      DIMENSION STATEV(NSTATV), TIME(2), COORDS(3)
+
+C     定義模型參數
+      REAL*8 MU0, MUR, DC, DELTA
+      PARAMETER (MU0=0.6D0, MUR=0.2D0, DC=0.01D0)
+
+C     SLIP: 累積滑移量
+      DELTA = SLIP
+
+C     Slip-weakening 摩擦係數
+      IF (DELTA .LE. DC) THEN
+          FRIC = MU0 - (MU0 - MUR) * DELTA / DC
+      ELSE
+          FRIC = MUR
+      END IF
+
+      RETURN
+      END

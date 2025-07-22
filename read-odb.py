@@ -1,49 +1,57 @@
 from odbAccess import openOdb
 import numpy as np
 
-odb = openOdb('BlockJob-75.odb')
+RUPTURE_POSITIONS = [75, 65, 55, 45, 35, 25, 15, 5]
 
-step = odb.steps['Shear_Load']
-frame = step.frames[-1]
+for RUPTURE_POSITION in RUPTURE_POSITIONS:
+    odb_path = f'./BlockJob-{RUPTURE_POSITION}.odb'
+    print(f"\nOpening {odb_path}...")
+    odb = openOdb(odb_path)
 
-try:
-    spring_region = odb.rootAssembly.instances['SPRING'].elementSets['SPRING_SET']
-    block_region = odb.rootAssembly.instances['CENTER_BLOCK'].elementSets['ALL']
-except KeyError as e:
-    print(f"[ERROR] 找不到指定的 elementSet 或 instance: {e}")
+    step = odb.steps['Shear_Load']
+    frame = step.frames[-1]
+
+    try:
+        instances = odb.rootAssembly.instances
+
+        spring_region       = instances['SPRING'].elementSets['SPRING_SET']
+        center_block_region = instances['CENTER_BLOCK'].elementSets['ALL']
+        left_block_region   = instances['SIDE_LEFT'].elementSets['ALL']
+        right_block_region  = instances['SIDE_RIGHT'].elementSets['ALL']
+        steel_plate_region  = instances['STEEL_PLATE'].elementSets['PLATE_SET']
+    except KeyError as e:
+        print(f"[ERROR] Can't find elementSet or instance: {e}")
+        odb.close()
+        raise
+
+    print("Element counts:")
+    print(f"  - Spring:         {len(spring_region.elements)}")
+    print(f"  - Center Block:   {len(center_block_region.elements)}")
+    print(f"  - Left Block:     {len(left_block_region.elements)}")
+    print(f"  - Right Block:    {len(right_block_region.elements)}")
+    print(f"  - Steel Plate:    {len(steel_plate_region.elements)}")
+
+    target_vars = ['ELSE']
+    energy_data = {}
+
+    print("\n--- Total strain energy values ---")
+    for var in target_vars:
+        if var in frame.fieldOutputs:
+            field = frame.fieldOutputs[var]
+
+            def get_total_energy(subset):
+                return sum(v.data for v in subset.values)
+
+            energy_data[f'{var}-Spring']         = get_total_energy(field.getSubset(region=spring_region))
+            energy_data[f'{var}-Center-Block']   = get_total_energy(field.getSubset(region=center_block_region))
+            energy_data[f'{var}-Left-Block']     = get_total_energy(field.getSubset(region=left_block_region))
+            energy_data[f'{var}-Right-Block']    = get_total_energy(field.getSubset(region=right_block_region))
+            energy_data[f'{var}-Steel-Plate']    = get_total_energy(field.getSubset(region=steel_plate_region))
+
+            for key, val in energy_data.items():
+                print(f"[{key}] Total Energy: {val:.12f}")
+        else:
+            print(f"[{var}] not found in field outputs.")
+
+    np.savez(f'strain-energy-{RUPTURE_POSITION}.npz', **energy_data)
     odb.close()
-    raise
-
-print(f"Spring region contains {len(spring_region.elements)} elements.")
-print(f"Block region contains {len(block_region.elements)} elements.")
-
-available_outputs = list(frame.fieldOutputs.keys())
-print("\nAvailable field output variables in 'Normal_Load' last frame:")
-for var in available_outputs:
-    print(f" - {var}")
-
-target_vars = ['EENER']
-
-energy_data = {}
-
-print("\n--- Total strain energy values ---")
-for var in target_vars:
-    if var in frame.fieldOutputs:
-        field = frame.fieldOutputs[var]
-        spring_subset = field.getSubset(region=spring_region)
-        block_subset = field.getSubset(region=block_region)
-
-        spring_sum = sum([v.data for v in spring_subset.values])
-        block_sum = sum([v.data for v in block_subset.values])
-
-        energy_data[f'{var}_spring'] = spring_sum
-        energy_data[f'{var}_block'] = block_sum
-
-        print(f"[{var}] Spring Set Energy: {spring_sum:.12f}")
-        print(f"[{var}] Block Set Energy : {block_sum:.12f}")
-    else:
-        print(f"[{var}] not found in field outputs.")
-
-np.savez('strain_energy_results.npz', **energy_data)
-
-odb.close()
