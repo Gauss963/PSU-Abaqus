@@ -1,0 +1,76 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{physics}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\title{Shear Amplitude Calculation in Abaqus Simulation}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section*{Parameter Definitions}
+
+\begin{itemize}
+    \item $\mu$: Friction coefficient, unitless ($\mu = 0.70$)
+    \item $\sigma_n$: Normal stress, in MPa ($\sigma_n = \SI{10}{\mega\pascal}$)
+    \item $Y$: Yield strength of PMMA, in MPa ($Y = \SI{3000}{\mega\pascal}$)
+    \item $A$: Contact area between spring and plate, $A = \texttt{SPR\_W} \times \texttt{SPR\_D}$, in mm$^2$
+    \item $h$: Height of the spring ($\texttt{SPR\_H}$), in mm
+    \item $D$: Depth of contact interface ($\texttt{DEPTH}$), in mm
+    \item $L$: Rupture length along contact interface ($\texttt{RUPTURE\_POSITION}$), in mm
+\end{itemize}
+
+\section*{Step 1: Frictional Resistance Force}
+
+\begin{equation}
+F_{\text{resist}} = 2 \mu \cdot \sigma_n \cdot D \cdot L
+\end{equation}
+
+\textbf{Unit Check:}
+\begin{align*}
+[\text{MPa}] \cdot [\text{mm}] \cdot [\text{mm}] &= \frac{\si{\newton}}{\si{\milli\meter\squared}} \cdot \si{\milli\meter} \cdot \si{\milli\meter} \\
+&= \si{\newton}
+\end{align*}
+
+So, $F_{\text{resist}}$ has unit of \si{\newton}.
+
+\section*{Step 2: Shear Amplitude}
+
+The shear amplitude is computed from:
+
+\begin{equation}
+\delta = \frac{F_{\text{resist}} \cdot h}{A \cdot Y}
+\end{equation}
+
+\textbf{Unit Check:}
+\begin{align*}
+\frac{[\si{\newton}] \cdot [\si{\milli\meter}]}{[\si{\milli\meter\squared}] \cdot [\si{\mega\pascal}]} 
+&= \frac{\si{\newton} \cdot \si{\milli\meter}}{\si{\milli\meter\squared} \cdot \frac{\si{\newton}}{\si{\milli\meter\squared}}} \\
+&= \si{\milli\meter}
+\end{align*}
+
+Thus, $\delta$ (shear amplitude) has unit of \si{\milli\meter}, which is physically consistent as a displacement.
+
+\section*{Alternative Expression (Code Form)}
+
+In Python-style code:
+
+\begin{verbatim}
+RESISTANCE = 2 * FRICTION_COEFFICIENT * DEPTH * RUPTURE_POSITION * NORMAL_STRESS
+SHEAR_AMPLITUDE = RESISTANCE * SPR_H / ( SPR_W * SPR_D * Y_PMMA )
+\end{verbatim}
+
+Or, more explicitly:
+
+\begin{verbatim}
+CONTACT_AREA = SPR_W * SPR_D
+SPRING_STIFFNESS = Y_PMMA * CONTACT_AREA / SPR_H
+SHEAR_AMPLITUDE = RESISTANCE / SPRING_STIFFNESS
+\end{verbatim}
+
+\end{document}

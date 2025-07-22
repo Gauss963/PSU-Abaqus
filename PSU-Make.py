@@ -13,6 +13,7 @@ from step import *
 from interaction import *
 from load import *
 from mesh import *
+from mesh import ElemType
 from optimization import *
 from job import *
 from sketch import *
@@ -45,8 +46,11 @@ RUPTURE_START = 55.00
 RUPTURE_POSITION = 0.00
 RUPTURE_POSITION = 75.00
 
-# SHEAR_AMPLITUDE = 3e-3
-SHEAR_AMPLITUDE = 2 * FRICTION_COEFFICIENT * NORMAL_STRESS * SPR_H / ( SPR_W * SPR_D * Y_PMMA)
+RESISTANCE  = 2 * FRICTION_COEFFICIENT * DEPTH * RUPTURE_POSITION * NORMAL_STRESS  # N
+CONTACT_AREA = SPR_W * SPR_D                                                       # mm²
+SPRING_STIFFNESS = Y_PMMA * CONTACT_AREA / SPR_H                                   # N/mm
+SHEAR_AMPLITUDE = RESISTANCE / SPRING_STIFFNESS                                    # mm
+SHEAR_AMPLITUDE *= 20
 
 # ---------------------------------------------------------------------------
 # 1. Model container
@@ -138,7 +142,7 @@ mat_gra.Elastic(table=((30000.0, 0.25),))
 MODEL.HomogeneousSolidSection(name='granite_sec', material='granite')
 
 mat_pmma = MODEL.Material(name='PMMA')
-mat_pmma.Elastic(table=((3000.0, 0.35),))
+mat_pmma.Elastic(table=((Y_PMMA, 0.35),))
 MODEL.HomogeneousSolidSection(name='pmma_sec', material='PMMA')
 
 mat_steel = MODEL.Material(name='steel')
@@ -352,26 +356,69 @@ MODEL.DisplacementBC(
 # ---------------------------------------------------------------------------
 # 8. Meshing
 # ---------------------------------------------------------------------------
+
+elem_type = ElemType(elemCode=C3D8I, elemLibrary=STANDARD)
 inst_plt = asm.instances['steel_plate']
 ctr_inst = asm.instances['center_block']
 for inst in (inst_left, inst_right, inst_spr, inst_plt, ctr_inst):
+    asm.setElementType(regions=(inst.cells,), elemTypes=(elem_type,))
     asm.seedPartInstance(regions=(inst,), size=MESH_SIZE)
     asm.generateMesh(regions=(inst,))
 
 del mdb.models['Model-1']
 
-MODEL.FieldOutputRequest(createStepName='Normal_Load', 
-    name='Spring-Strain-Energy', rebar=EXCLUDE, region=
-    mdb.models['Block-Assembly'].rootAssembly.allInstances['spring'].sets['spring_set']
-    , sectionPoints=DEFAULT, variables=('ENER', 'ELEN', 'ELEDEN'))
+# ---------------------------------------------------------------------------
+# 9. Setup output requests
+# ---------------------------------------------------------------------------
 
-MODEL.FieldOutputRequest(createStepName='Normal_Load', 
-    name='Block-Strain-Energy', rebar=EXCLUDE, region=
-    mdb.models['Block-Assembly'].rootAssembly.allInstances['center_block'].sets['all']
-    , sectionPoints=DEFAULT, variables=('ENER', 'ELEN', 'ELEDEN'))
+# MODEL.FieldOutputRequest(createStepName='Shear_Load', 
+#     name='Spring-Strain-Energy', rebar=EXCLUDE,
+#     region=mdb.models['Block-Assembly'].rootAssembly.allInstances['spring'].sets['spring_set'],
+#     frequency=LAST_INCREMENT,
+#     sectionPoints=DEFAULT, variables=('ENER', 'ELEN', 'ELEDEN'))
+
+# MODEL.FieldOutputRequest(createStepName='Shear_Load', 
+#     name='Block-Strain-Energy', rebar=EXCLUDE,
+#     region=mdb.models['Block-Assembly'].rootAssembly.allInstances['center_block'].sets['all'],
+#     frequency=LAST_INCREMENT,
+#     sectionPoints=DEFAULT, variables=('ENER', 'ELEN', 'ELEDEN'))
+
+MODEL.FieldOutputRequest(
+    createStepName='Shear_Load', 
+    name='Spring-Strain-Energy', 
+    rebar=EXCLUDE,
+    region=mdb.models['Block-Assembly'].rootAssembly.allInstances['spring'].sets['spring_set'],
+    frequency=1,
+    sectionPoints=DEFAULT,
+    variables=('ENER', 'ELEN', 'ELEDEN')
+)
+
+MODEL.FieldOutputRequest(
+    createStepName='Shear_Load', 
+    name='Block-Strain-Energy', 
+    rebar=EXCLUDE,
+    region=mdb.models['Block-Assembly'].rootAssembly.allInstances['center_block'].sets['all'],
+    frequency=1,
+    sectionPoints=DEFAULT,
+    variables=('ENER', 'ELEN', 'ELEDEN')
+)
+
+MODEL.HistoryOutputRequest(
+    name='H-Block-Strain-Energy',
+    createStepName='Shear_Load',
+    region=mdb.models['Block-Assembly'].rootAssembly.allInstances['center_block'].sets['all'],
+    variables=('ELSE',)
+)
+
+MODEL.HistoryOutputRequest(
+    name='H-Spring-Strain-Energy',
+    createStepName='Shear_Load',
+    region=mdb.models['Block-Assembly'].rootAssembly.allInstances['spring'].sets['spring_set'],
+    variables=('ELSE',)
+)
 
 # ---------------------------------------------------------------------------
-# 9. Job
+# 10. Job
 # ---------------------------------------------------------------------------
-job = mdb.Job(name='BlockJob', model='Block-Assembly')
+job = mdb.Job(name=f'BlockJob-{RUPTURE_POSITION:.0f}', model='Block-Assembly')
 job.writeInput()
