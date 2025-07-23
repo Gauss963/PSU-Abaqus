@@ -20,6 +20,21 @@ from sketch import *
 from visualization import *
 from connectorBehavior import *
 
+def add_chamfer(part, size):
+    """Chamfer every vertical edge by <size> mm (Abaqus 2024)."""
+    verts = part.vertices
+    vertical_edges = []
+    for e in part.edges:
+        v1, v2 = e.getVertices()
+        p1, p2 = verts[v1].pointOn[0], verts[v2].pointOn[0]
+        if abs(p1[0]-p2[0]) < 1e-6 and abs(p1[2]-p2[2]) < 1e-6:
+            vertical_edges.append(e)
+
+    if not vertical_edges:
+        raise RuntimeError("No vertical edges found to chamfer.")
+
+    part.Chamfer(length=size, edgeList=tuple(vertical_edges))
+
 
 def build_model(RUPTURE_POSITION):
     model_name = f'Block-Assembly-{int(RUPTURE_POSITION)}'
@@ -50,9 +65,9 @@ def build_model(RUPTURE_POSITION):
     Y_PMMA = 3000.0       # MPa, PMMA yield stress
     MESH_SIZE = 2.00
     RUPTURE_START = 55.00
-    RUPTURE_POSITION = 75.00
+    # RUPTURE_POSITION = 75.00
 
-    RESISTANCE  = 2 * FRICTION_COEFFICIENT * DEPTH * RUPTURE_POSITION * NORMAL_STRESS  # N
+    RESISTANCE  = 2 * FRICTION_COEFFICIENT * DEPTH * 160 * NORMAL_STRESS  # N
     CONTACT_AREA = SPR_W * SPR_D                                                       # mm²
     SPRING_STIFFNESS = Y_PMMA * CONTACT_AREA / SPR_H                                   # N/mm
     SHEAR_AMPLITUDE = RESISTANCE / SPRING_STIFFNESS                                    # mm
@@ -60,7 +75,7 @@ def build_model(RUPTURE_POSITION):
     # ---------------------------------------------------------------------------
     # 1. Model container
     # ---------------------------------------------------------------------------
-    MODEL = mdb.Model(name='Block-Assembly')
+    # MODEL = mdb.Model(name='Block-Assembly')
 
     # ---------------------------------------------------------------------------
     # 2-1  Side block - 45 bevel in sketch
@@ -87,21 +102,6 @@ def build_model(RUPTURE_POSITION):
     center_part = MODEL.Part(name='center_block',
                             dimensionality=THREE_D, type=DEFORMABLE_BODY)
     center_part.BaseSolidExtrude(sketch=sk_ctr, depth=CENTER_D)
-
-    def add_chamfer(part, size):
-        """Chamfer every vertical edge by <size> mm (Abaqus 2024)."""
-        verts = part.vertices
-        vertical_edges = []
-        for e in part.edges:
-            v1, v2 = e.getVertices()
-            p1, p2 = verts[v1].pointOn[0], verts[v2].pointOn[0]
-            if abs(p1[0]-p2[0]) < 1e-6 and abs(p1[2]-p2[2]) < 1e-6:
-                vertical_edges.append(e)
-
-        if not vertical_edges:
-            raise RuntimeError("No vertical edges found to chamfer.")
-
-        part.Chamfer(length=size, edgeList=tuple(vertical_edges))
 
     add_chamfer(center_part, CHAMFER)
 
@@ -367,7 +367,7 @@ def build_model(RUPTURE_POSITION):
         createStepName='Shear_Load', 
         name='Spring-Strain-Energy', 
         rebar=EXCLUDE,
-        region=mdb.models['Block-Assembly'].rootAssembly.allInstances['spring'].sets['spring_set'],
+        region=MODEL.rootAssembly.allInstances['spring'].sets['spring_set'],
         frequency=1,
         sectionPoints=DEFAULT,
         variables=('ENER', 'ELEN', 'ELEDEN')
@@ -377,7 +377,7 @@ def build_model(RUPTURE_POSITION):
         createStepName='Shear_Load', 
         name='Center-Block-Strain-Energy', 
         rebar=EXCLUDE,
-        region=mdb.models['Block-Assembly'].rootAssembly.allInstances['center_block'].sets['all'],
+        region=MODEL.rootAssembly.allInstances['center_block'].sets['all'],
         frequency=1,
         sectionPoints=DEFAULT,
         variables=('ENER', 'ELEN', 'ELEDEN')
@@ -387,7 +387,7 @@ def build_model(RUPTURE_POSITION):
         createStepName='Shear_Load', 
         name='Side-Block-Left-Strain-Energy', 
         rebar=EXCLUDE,
-        region=mdb.models['Block-Assembly'].rootAssembly.allInstances['side_left'].sets['all'],
+        region=MODEL.rootAssembly.allInstances['side_left'].sets['all'],
         frequency=1,
         sectionPoints=DEFAULT,
         variables=('ENER', 'ELEN', 'ELEDEN')
@@ -397,7 +397,7 @@ def build_model(RUPTURE_POSITION):
         createStepName='Shear_Load', 
         name='Side-Block-Right-Strain-Energy', 
         rebar=EXCLUDE,
-        region=mdb.models['Block-Assembly'].rootAssembly.allInstances['side_right'].sets['all'],
+        region=MODEL.rootAssembly.allInstances['side_right'].sets['all'],
         frequency=1,
         sectionPoints=DEFAULT,
         variables=('ENER', 'ELEN', 'ELEDEN')
@@ -407,7 +407,7 @@ def build_model(RUPTURE_POSITION):
         createStepName='Shear_Load', 
         name='Steel-Plate-Energy', 
         rebar=EXCLUDE,
-        region=mdb.models['Block-Assembly'].rootAssembly.allInstances['steel_plate'].sets['plate_set'],
+        region=MODEL.rootAssembly.allInstances['steel_plate'].sets['plate_set'],
         frequency=1,
         sectionPoints=DEFAULT,
         variables=('ENER', 'ELEN', 'ELEDEN')
