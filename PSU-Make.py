@@ -406,34 +406,6 @@ MODEL.FieldOutputRequest(
     variables=('ENER', 'ELEN', 'ELEDEN')
 )
 
-# MODEL.HistoryOutputRequest(
-#     name='H-Spring-Strain-Energy',
-#     createStepName='Shear_Load',
-#     region=mdb.models['Block-Assembly'].rootAssembly.allInstances['spring'].sets['spring_set'],
-#     variables=('ELSE',)
-# )
-
-# MODEL.HistoryOutputRequest(
-#     name='H-Center-Block-Strain-Energy',
-#     createStepName='Shear_Load',
-#     region=mdb.models['Block-Assembly'].rootAssembly.allInstances['center_block'].sets['all'],
-#     variables=('ELSE',)
-# )
-
-# MODEL.HistoryOutputRequest(
-#     name='H-Side-Block-Left-Strain-Energy',
-#     createStepName='Shear_Load',
-#     region=mdb.models['Block-Assembly'].rootAssembly.allInstances['side_left'].sets['all'],
-#     variables=('ELSE',)
-# )
-
-# MODEL.HistoryOutputRequest(
-#     name='H-Side-Block-Right-Strain-Energy',
-#     createStepName='Shear_Load',
-#     region=mdb.models['Block-Assembly'].rootAssembly.allInstances['side_right'].sets['all'],
-#     variables=('ELSE',)
-# )
-
 # ---------------------------------------------------------------------------
 # 10. Job
 # ---------------------------------------------------------------------------
