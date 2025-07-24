@@ -1,7 +1,7 @@
 from odbAccess import openOdb
 import numpy as np
 
-RUPTURE_POSITIONS = [75, 65, 55, 45, 35, 25, 15, 5]
+RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
 
 for RUPTURE_POSITION in RUPTURE_POSITIONS:
     odb_path = f'./BlockJob-{RUPTURE_POSITION}.odb'

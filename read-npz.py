@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-RUPTURE_POSITIONS = [75, 65, 55, 45, 35, 25, 15, 5]
+RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
 
 spring_energies = []
 center_block_energies = []

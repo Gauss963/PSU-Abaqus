@@ -37,14 +37,14 @@ def add_chamfer(part, size):
 
 
 def build_model(RUPTURE_POSITION):
-    model_name = f'Block-Assembly-{int(RUPTURE_POSITION)}'
-    job_name = f'BlockJob-{int(RUPTURE_POSITION)}'
-
-    MODEL = mdb.Model(name=model_name)
 
     # ---------------------------------------------------------------------------
     # 0. Parameters
     # ---------------------------------------------------------------------------
+
+    # Job names
+    model_name = f'Block-Assembly-{int(RUPTURE_POSITION)}'
+    job_name = f'BlockJob-{int(RUPTURE_POSITION)}'
 
     # Geometry parameters
     W,  H,  DEPTH   = 100.0, 160.0, 50.0          # side-block  X, Y, Z
@@ -65,17 +65,17 @@ def build_model(RUPTURE_POSITION):
     Y_PMMA = 3000.0       # MPa, PMMA yield stress
     MESH_SIZE = 2.00
     RUPTURE_START = 55.00
-    # RUPTURE_POSITION = 75.00
+    RESISTANCE_AREA_LENGTH = 160.0 # mm, length of the resistance area
 
-    RESISTANCE  = 2 * FRICTION_COEFFICIENT * DEPTH * 160 * NORMAL_STRESS  # N
-    CONTACT_AREA = SPR_W * SPR_D                                                       # mm²
-    SPRING_STIFFNESS = Y_PMMA * CONTACT_AREA / SPR_H                                   # N/mm
-    SHEAR_AMPLITUDE = RESISTANCE / SPRING_STIFFNESS                                    # mm
+    RESISTANCE  = 2 * FRICTION_COEFFICIENT * DEPTH * RESISTANCE_AREA_LENGTH * NORMAL_STRESS  # N
+    CONTACT_AREA = SPR_W * SPR_D                                                             # mm²
+    SPRING_STIFFNESS = Y_PMMA * CONTACT_AREA / SPR_H                                         # N/mm
+    SHEAR_AMPLITUDE = RESISTANCE / SPRING_STIFFNESS                                          # mm
 
     # ---------------------------------------------------------------------------
     # 1. Model container
     # ---------------------------------------------------------------------------
-    # MODEL = mdb.Model(name='Block-Assembly')
+    MODEL = mdb.Model(name=model_name)
 
     # ---------------------------------------------------------------------------
     # 2-1  Side block - 45 bevel in sketch
@@ -413,6 +413,20 @@ def build_model(RUPTURE_POSITION):
         variables=('ENER', 'ELEN', 'ELEDEN')
     )
 
+    MODEL.FieldOutputRequest(
+        createStepName='Shear_Load', 
+        name='Side-Block-Left-Stress',
+        rebar=EXCLUDE,
+        region=MODEL.rootAssembly.allInstances['side_left'].sets['all'],
+        sectionPoints=DEFAULT,
+        variables=('S', 'MISES', 'MISESMAX', 'TSHR', 'CTSHR', 'ALPHA',
+                'TRIAX', 'LODE', 'VS', 'PS', 'CS11', 'ALPHAN', 'SSAVG',
+                'MISESONLY', 'PRESSONLY', 'SEQUT', 'YIELDPOT', 'NBSEQ', 'GKSEQ', 'E', 'VE', 
+                'PE', 'VEEQ', 'PEEQ', 'PEEQT', 'PEEQMAX', 'PEMAG', 'PEQC', 'EE', 'IE', 
+                'THE', 'NE', 'LE', 'TE', 'TEEQ', 'TEVOL', 'EEQUT', 'ER', 'FVE', 'SE', 
+                'SPE', 'SEPE', 'SEE', 'SEP', 'SALPHA', 'NBEEQ', 'NBPEEQ', 'GKEEQ', 
+                'GKPEEQ', 'SVOL', 'EVOL', 'ESOL', 'IVOL', 'STH', 'COORD'))
+
     # ---------------------------------------------------------------------------
     # 10. Job
     # ---------------------------------------------------------------------------
@@ -422,7 +436,7 @@ def build_model(RUPTURE_POSITION):
 # -----------------------------
 # Main program loop
 # -----------------------------
-RUPTURE_POSITIONS = [75.0, 65.0, 55.0, 45.0, 35.0, 25.0, 15.0, 5.0]
+RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
 
 for RUPTURE_POSITION in RUPTURE_POSITIONS:
     build_model(RUPTURE_POSITION)
