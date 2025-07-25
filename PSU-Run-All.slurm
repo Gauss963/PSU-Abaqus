@@ -7,7 +7,7 @@
 #SBATCH --ntasks=20
 #SBATCH --cpus-per-task=1
 #SBATCH --nodes=1
-#SBATCH --time=48:00:00
+#SBATCH --time=95:00:00
 #SBATCH --mem-per-cpu=16G
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=b09501028@ntu.edu.tw

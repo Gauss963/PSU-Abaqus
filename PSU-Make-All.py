@@ -65,7 +65,7 @@ def build_model(RUPTURE_POSITION):
     Y_PMMA = 3000.0       # MPa, PMMA yield stress
     MESH_SIZE = 2.00
     RUPTURE_START = 55.00
-    RESISTANCE_AREA_LENGTH = 160.0 # mm, length of the resistance area
+    RESISTANCE_AREA_LENGTH = 220.0 # mm, length of the resistance area
 
     RESISTANCE  = 2 * FRICTION_COEFFICIENT * DEPTH * RESISTANCE_AREA_LENGTH * NORMAL_STRESS  # N
     CONTACT_AREA = SPR_W * SPR_D                                                             # mm²
