@@ -419,13 +419,8 @@ def build_model(RUPTURE_POSITION):
         rebar=EXCLUDE,
         region=MODEL.rootAssembly.allInstances['side_left'].sets['all'],
         sectionPoints=DEFAULT,
-        variables=('S', 'MISES', 'MISESMAX', 'TSHR', 'CTSHR', 'ALPHA',
-                'TRIAX', 'LODE', 'VS', 'PS', 'CS11', 'ALPHAN', 'SSAVG',
-                'MISESONLY', 'PRESSONLY', 'SEQUT', 'YIELDPOT', 'NBSEQ', 'GKSEQ', 'E', 'VE', 
-                'PE', 'VEEQ', 'PEEQ', 'PEEQT', 'PEEQMAX', 'PEMAG', 'PEQC', 'EE', 'IE', 
-                'THE', 'NE', 'LE', 'TE', 'TEEQ', 'TEVOL', 'EEQUT', 'ER', 'FVE', 'SE', 
-                'SPE', 'SEPE', 'SEE', 'SEP', 'SALPHA', 'NBEEQ', 'NBPEEQ', 'GKEEQ', 
-                'GKPEEQ', 'SVOL', 'EVOL', 'ESOL', 'IVOL', 'STH', 'COORD'))
+        variables=('S', 'MISES')
+    )
 
     # ---------------------------------------------------------------------------
     # 10. Job
