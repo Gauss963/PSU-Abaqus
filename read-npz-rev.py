@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
+RUPTURE_POSITIONS = [140, 130, 120, 110, 100, 90, 80, 70, 60]
 
 spring_energies = []
 center_block_energies = []
@@ -11,7 +11,7 @@ right_block_energies = []
 steel_plate_block_energies = []
 
 for RUPTURE_POSITION in RUPTURE_POSITIONS:
-    filename = f'./strain-energy-{RUPTURE_POSITION}.npz'
+    filename = f'./strain-energy-rev-{RUPTURE_POSITION}.npz'
     if not os.path.exists(filename):
         print(f"[WARNING] File {filename} not found. Skipping.")
         continue

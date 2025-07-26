@@ -5,12 +5,12 @@ import numpy as np
 import uuid
 
 
-RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
+RUPTURE_POSITIONS = [140, 130, 120, 110, 100, 90, 80, 70, 60]
 
 for RUPTURE_POSITION in RUPTURE_POSITIONS:
     
     # === 1. Open ODB ===
-    odb_path = f'./BlockJob-{RUPTURE_POSITION}.odb'
+    odb_path = f'./BlockJob-Rev-{RUPTURE_POSITION}.odb'
     print(f"\nOpening {odb_path}...")
     odb = openOdb(odb_path)
     
@@ -79,8 +79,8 @@ for RUPTURE_POSITION in RUPTURE_POSITIONS:
     plt.axis('equal')
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f'Shear-Stress-{RUPTURE_POSITION}-Heatmap-S12.png', dpi=300)
-    plt.savefig(f'Shear-Stress-{RUPTURE_POSITION}-Heatmap-S12.pdf', dpi=300)
+    # plt.savefig(f'Shear-Stress-{RUPTURE_POSITION}-Heatmap-S12.png', dpi=300)
+    plt.savefig(f'Shear-Stress-Rev-{RUPTURE_POSITION}-Heatmap-S12.pdf', dpi=300)
     # plt.show()
 
     odb.close()
