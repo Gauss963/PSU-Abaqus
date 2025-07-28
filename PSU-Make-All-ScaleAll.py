@@ -52,7 +52,7 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     # --- geometry (base) ---
     W,  H,  DEPTH   = 100.0, 160.0, 50.0       # side-block  X, Y, Z
     CENTER_D        = 60.0                     # center-block extrusion depth
-    SPR_W, SPR_H, SPR_D = 40.0, 80.0, 40.0     # spring      X, Y, Z  (NOT scaled)
+    SPR_W, SPR_H, SPR_D = 40.0, 80.0, 40.0     # spring      X, Y, Z
     PL_W,  PL_H,  PL_D = 90.0, 12.7, 60.0      # steel plate X, Y, Z
     CHAMFER         = 5.0                      # chamfer size (mm)
 
@@ -71,48 +71,41 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     RESISTANCE_AREA_LENGTH = 220.0  # mm, length of the resistance area
 
     # ---------------------------------------------------------------------------
-    # 0.1 Helpers: scale everything except spring dimensions
+    # 0.1 Helpers: scale all parts (spring included)
     # ---------------------------------------------------------------------------
     s = float(scale_factor)
-
     def S(v):  # scale a 3-tuple
         return (s*v[0], s*v[1], s*v[2])
 
-    # scaled geometry (non-spring)
-    W_s, H_s, DEPTH_s   = s*W, s*H, s*DEPTH
-    CENTER_D_s          = s*CENTER_D
-    PL_W_s, PL_H_s, PL_D_s = s*PL_W, s*PL_H, s*PL_D
-    CHAMFER_s           = s*CHAMFER
+    # scaled geometry (all)
+    W_s, H_s, DEPTH_s    = s*W, s*H, s*DEPTH
+    CENTER_D_s           = s*CENTER_D
+    PL_W_s, PL_H_s, PL_D_s   = s*PL_W, s*PL_H, s*PL_D
+    CHAMFER_s            = s*CHAMFER
+    # spring 尺寸也等比例縮放
+    SPR_W_s, SPR_H_s, SPR_D_s = s*SPR_W, s*SPR_H, s*SPR_D
 
-    # spring geometry: NOT scaled
-    SPR_W_s, SPR_H_s, SPR_D_s = SPR_W, SPR_H, SPR_D
+    # placements
+    T_LEFT_s   = S(T_LEFT)
+    T_RIGHT_s  = S(T_RIGHT)  # 供 BC_front_R 使用（照你的要求）
+    T_PLT_s    = S(T_PLT)
 
-    # placements: all translated positions scale so相對位置維持
-    T_LEFT_s  = S(T_LEFT)
-    T_RIGHT_s = S(T_RIGHT)
-    # 原碼的右塊採用 rotate+translate，實際使用的是 T_RIGHT_CORRECTED
+    # 右側 instance 的實際平移向量仍用「修正後」那個，但 BC 用 T_RIGHT_s
     T_RIGHT_CORRECTED_base = (50 - (-50), -20.0, 55.0)  # = (100, -20, 55)
     T_RIGHT_CORRECTED_s = S(T_RIGHT_CORRECTED_base)
-    T_PLT_s   = S(T_PLT)
 
-    T_SPR_s = spring_translation_centered_on_plate(
-        T_PLT_s, PL_W_s, PL_H_s, PL_D_s,
-        SPR_W, SPR_H, SPR_D
-    )
+    # mesh size: 所有零件都用等比例 seed，維持單元密度
+    # MESH_SIZE_s = MESH_SIZE * s
 
-    # mesh size: non-spring scaled, spring unchanged
-    # MESH_SIZE_body = MESH_SIZE * s
-    # MESH_SIZE_spring = MESH_SIZE
+    # rupture plane y coordinate (scaled)
+    y_rupture       = s*(RUPTURE_START - RUPTURE_POSITION)
+    y_rupture_side  = s*(RUPTURE_START - RUPTURE_POSITION + 20.0)
 
-    # rupture plane y coordinate (both constants and positions scaled)
-    y_rupture = s*(RUPTURE_START - RUPTURE_POSITION)
-    y_rupture_side = s*(RUPTURE_START - RUPTURE_POSITION + 20.0)
-
-    # shear amplitude: 接觸抗力隨面積 ~ s^2 放大（DEPTH、長度都放大），彈簧剛度不變 → 位移放大 ~ s^2
-    CONTACT_AREA = SPR_W_s * SPR_D_s                        # mm^2 (unchanged)
-    SPRING_STIFFNESS = Y_PMMA * CONTACT_AREA / SPR_H_s      # N/mm (unchanged)
-    RESISTANCE = 2 * FRICTION_COEFFICIENT * DEPTH_s * (s*RESISTANCE_AREA_LENGTH) * NORMAL_STRESS  # N
-    SHEAR_AMPLITUDE = RESISTANCE / SPRING_STIFFNESS         # mm
+    # 剪移幅（自動跟尺度）：抗力~s^2，剛度~s → 幅度~s
+    CONTACT_AREA     = SPR_W_s * SPR_D_s                          # mm^2 (scaled)
+    SPRING_STIFFNESS = Y_PMMA * CONTACT_AREA / SPR_H_s            # N/mm (scaled)
+    RESISTANCE       = 2 * FRICTION_COEFFICIENT * DEPTH_s * (s*RESISTANCE_AREA_LENGTH) * NORMAL_STRESS
+    SHEAR_AMPLITUDE  = RESISTANCE / SPRING_STIFFNESS
 
     # ---------------------------------------------------------------------------
     # 1. Model container
@@ -120,7 +113,7 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     MODEL = mdb.Model(name=model_name)
 
     # ---------------------------------------------------------------------------
-    # 2-1  Side block with 45° bevel in sketch (scaled)
+    # 2-1  Side block (scaled)
     # ---------------------------------------------------------------------------
     sk_side = MODEL.ConstrainedSketch(name='sk_side', sheetSize=400.0*s)
     pts = [(-W_s/2, -H_s/2),
@@ -143,7 +136,7 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     center_part.BaseSolidExtrude(sketch=sk_ctr, depth=CENTER_D_s)
     add_chamfer(center_part, CHAMFER_s)
 
-    # Partition center_block with XY plane at scaled y = y_rupture
+    # Partition：rupture（center / side）
     cell = center_part.cells.getSequenceFromMask(('[#1 ]', ), )
     center_part.PartitionCellByPlaneThreePoints(
         cells=cell,
@@ -151,8 +144,6 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
         point2=(0.0,    y_rupture, 0.0),
         point3=(0.0,    y_rupture, 10.0*s)
     )
-
-    # Partition side_block with XY plane at scaled y = y_rupture_side
     side_cell = side_part.cells.getSequenceFromMask(('[#1 ]', ), )
     side_part.PartitionCellByPlaneThreePoints(
         cells=side_cell,
@@ -162,9 +153,9 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     )
 
     # ---------------------------------------------------------------------------
-    # 2-3  Spring (NOT scaled) & 2-4  Steel plate (scaled)
+    # 2-3  Spring (scaled) & 2-4 Steel plate (scaled)
     # ---------------------------------------------------------------------------
-    sk_spr = MODEL.ConstrainedSketch(name='sk_spring', sheetSize=200.0)
+    sk_spr = MODEL.ConstrainedSketch(name='sk_spring', sheetSize=200.0*s)
     sk_spr.rectangle((0.0, 0.0), (SPR_W_s, SPR_H_s))
     spring_part = MODEL.Part(name='spring', dimensionality=THREE_D, type=DEFORMABLE_BODY)
     spring_part.BaseSolidExtrude(sketch=sk_spr, depth=SPR_D_s)
@@ -175,7 +166,7 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     plate_part.BaseSolidExtrude(sketch=sk_plt, depth=PL_D_s)
 
     # ---------------------------------------------------------------------------
-    # 3. Materials & sections (unchanged properties)
+    # 3. Materials & sections
     # ---------------------------------------------------------------------------
     mat_gra = MODEL.Material(name='granite')
     mat_gra.Density(table=((2.65426e-9,),))
@@ -196,7 +187,7 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     plate_part.SectionAssignment(plate_part.Set(cells=plate_part.cells, name='plate_set'), sectionName='steel_sec')
 
     # ---------------------------------------------------------------------------
-    # 4. Assembly & positioning (scaled translations; rotate same)
+    # 4. Assembly & positioning
     # ---------------------------------------------------------------------------
     asm = MODEL.rootAssembly
     asm.DatumCsysByDefault(CARTESIAN)
@@ -210,10 +201,17 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     asm.translate(instanceList=('side_left',), vector=T_LEFT_s)
     asm.rotate(instanceList=('side_right',), axisPoint=(0,0,0), axisDirection=(0,1,0), angle=180.0)
     asm.translate(instanceList=('side_right',), vector=T_RIGHT_CORRECTED_s)
-    asm.translate(instanceList=('spring',),      vector=T_SPR_s)
     asm.translate(instanceList=('steel_plate',), vector=T_PLT_s)
 
-    # Surfaces (masks不受縮放影響)
+    # 讓 spring 在 X/Z 置中並貼在鋼板頂面（使用縮放後尺寸）
+    T_SPR_s = (
+        T_PLT_s[0] + (PL_W_s - SPR_W_s) * 0.5,
+        T_PLT_s[1] + PL_H_s,
+        T_PLT_s[2] + (PL_D_s - SPR_D_s) * 0.5
+    )
+    asm.translate(instanceList=('spring',), vector=T_SPR_s)
+
+    # Surfaces
     asm.Surface(name='Center-Top',  side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#8000 ]', ), ))
     asm.Surface(name='Center-Left-Tie',  side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#2 ]', ), ))
     asm.Surface(name='Center-Right-Tie', side1Faces=asm.instances['center_block'].faces.getSequenceFromMask(('[#10000 ]', ), ))
@@ -244,7 +242,6 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     MODEL.SurfaceToSurfaceContactStd(name='FrictionInteraction_Left',  createStepName='Initial',
         main=asm.surfaces['Center-Left-friction'],  secondary=asm.surfaces['Left-Right-friction'],
         sliding=FINITE, interactionProperty='FrictionArea', adjustMethod=NONE, initialClearance=OMIT)
-
     MODEL.SurfaceToSurfaceContactStd(name='FrictionInteraction_Right', createStepName='Initial',
         main=asm.surfaces['Center-Right-friction'], secondary=asm.surfaces['Right-Left-friction'],
         sliding=FINITE, interactionProperty='FrictionArea', adjustMethod=NONE, initialClearance=OMIT)
@@ -253,22 +250,23 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     # 5. Boundary conditions (selection coords scaled)
     # ---------------------------------------------------------------------------
     y_bot = -H_s/2 + T_LEFT_s[1]
-    bot_L = asm.instances['side_left'].faces.getByBoundingBox(yMin=y_bot-1e-3*s, yMax=y_bot+1e-3*s)
-    bot_R = asm.instances['side_right'].faces.getByBoundingBox(yMin=y_bot-1e-3*s, yMax=y_bot+1e-3*s)
+    inst_left  = asm.instances['side_left']
+    inst_right = asm.instances['side_right']
+
+    bot_L = inst_left.faces.getByBoundingBox(yMin=y_bot-1e-3*s, yMax=y_bot+1e-3*s)
+    bot_R = inst_right.faces.getByBoundingBox(yMin=y_bot-1e-3*s, yMax=y_bot+1e-3*s)
     asm.Set(name='left_bot',  faces=bot_L)
     asm.Set(name='right_bot', faces=bot_R)
     MODEL.DisplacementBC('BC_left_bot',  'Initial', asm.sets['left_bot'],  u2=0.0)
     MODEL.DisplacementBC('BC_right_bot', 'Initial', asm.sets['right_bot'], u2=0.0)
 
     x_sym = -W_s/2 + T_LEFT_s[0]
-    inst_left  = asm.instances['side_left']
     lf = inst_left.faces.getByBoundingBox(xMin=x_sym-1e-3*s, xMax=x_sym+1e-3*s)
     asm.Set(name='left_face', faces=lf)
     MODEL.DisplacementBC('BC_left_face', 'Initial', asm.sets['left_face'], u1=0.0)
 
     z_L = DEPTH_s + T_LEFT_s[2]
-    inst_right = asm.instances['side_right']
-    # z_R = DEPTH_s + T_RIGHT_CORRECTED_s[2]   # 修正：使用放大後的右塊位移
+    # 依你的指示，這裡使用 T_RIGHT_s（不是 T_RIGHT_CORRECTED_s）
     z_R = DEPTH_s + T_RIGHT_s[2]
     edge_L = inst_left.edges.getByBoundingBox(zMin=z_L-1e-3*s, zMax=z_L+1e-3*s)
     edge_R = inst_right.edges.getByBoundingBox(zMin=z_R-1e-3*s, zMax=z_R+1e-3*s)
@@ -280,11 +278,29 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     # ---------------------------------------------------------------------------
     # 6. Analysis steps
     # ---------------------------------------------------------------------------
-    MODEL.StaticStep(name='Normal_Load', previous='Initial', nlgeom=ON)
-    MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load')
+    # MODEL.StaticStep(name='Normal_Load', previous='Initial', nlgeom=ON)
+    # MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load')
+    MODEL.StaticStep(
+        name='Normal_Load',
+        previous='Initial',
+        nlgeom=ON,
+        timePeriod=1.0,
+        initialInc=1e-3,
+        minInc=1e-6,
+        maxInc=0.1
+    )
+
+    MODEL.StaticStep(
+        name='Shear_Load',
+        previous='Normal_Load',
+        timePeriod=1.0,
+        initialInc=1e-3,
+        minInc=1e-6,
+        maxInc=0.1
+    )
 
     # ---------------------------------------------------------------------------
-    # 7. Loads (selection coords scaled; magnitude is stress → 不需縮放)
+    # 7. Loads (magnitude 是應力，不需縮放；選取座標有縮放)
     # ---------------------------------------------------------------------------
     x_norm_right =  W_s/2 + T_RIGHT_CORRECTED_s[0]
     face_norm_right = inst_right.faces.getByBoundingBox(xMin=x_norm_right-1e-3*s, xMax=x_norm_right+1e-3*s)
@@ -304,29 +320,23 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     )
 
     # ---------------------------------------------------------------------------
-    # 8. Meshing (non-spring uses scaled seed; spring keeps original seed)
+    # 8. Meshing (all parts use scaled seed)
     # ---------------------------------------------------------------------------
     elem_type = ElemType(elemCode=C3D8I, elemLibrary=STANDARD)
 
     inst_plt = asm.instances['steel_plate']
     ctr_inst = asm.instances['center_block']
 
-    # 非彈簧
-    for inst in (inst_left, inst_right, inst_plt, ctr_inst):
+    for inst in (inst_left, inst_right, inst_plt, ctr_inst, inst_spr):
         asm.setElementType(regions=(inst.cells,), elemTypes=(elem_type,))
         asm.seedPartInstance(regions=(inst,), size=MESH_SIZE)
         asm.generateMesh(regions=(inst,))
-
-    # 彈簧：保持原本 seed
-    asm.setElementType(regions=(inst_spr.cells,), elemTypes=(elem_type,))
-    asm.seedPartInstance(regions=(inst_spr,), size=MESH_SIZE)
-    asm.generateMesh(regions=(inst_spr,))
 
     if 'Model-1' in mdb.models:
         del mdb.models['Model-1']
 
     # ---------------------------------------------------------------------------
-    # 9. Field Output Requests (同原本；集合/實體名稱未變)
+    # 9. Field Output Requests  (同前略)
     # ---------------------------------------------------------------------------
     MODEL.FieldOutputRequest(
         createStepName='Shear_Load', name='Spring-Strain-Energy', rebar=EXCLUDE,
