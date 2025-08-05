@@ -309,8 +309,26 @@ def build_model(RUPTURE_POSITION):
     # ---------------------------------------------------------------------------
     # 6. Analysis steps
     # ---------------------------------------------------------------------------
-    MODEL.StaticStep(name='Normal_Load', previous='Initial', nlgeom=ON)
-    MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load')
+    # MODEL.StaticStep(name='Normal_Load', previous='Initial', nlgeom=ON)
+    # MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load')
+    MODEL.StaticStep(
+        name='Normal_Load',
+        previous='Initial',
+        nlgeom=ON,
+        timePeriod=1.0,
+        initialInc=1e-3,
+        minInc=1e-6,
+        maxInc=0.1
+    )
+
+    MODEL.StaticStep(
+        name='Shear_Load',
+        previous='Normal_Load',
+        timePeriod=1.0,
+        initialInc=1e-3,
+        minInc=1e-6,
+        maxInc=0.1
+    )
 
     # ---------------------------------------------------------------------------
     # 7. Loads

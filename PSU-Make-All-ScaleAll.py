@@ -41,6 +41,9 @@ def spring_translation_centered_on_plate(T_PLT_s, PL_W_s, PL_H_s, PL_D_s, SPR_W,
         T_PLT_s[1] + PL_H_s,
         T_PLT_s[2] + (PL_D_s - SPR_D) * 0.5
     )
+    
+def scale(scale_factor, vector):
+        return (scale_factor*vector[0], scale_factor*vector[1], scale_factor*vector[2])
 
 def build_model(RUPTURE_POSITION, scale_factor=1.0):
     # ---------------------------------------------------------------------------
@@ -66,7 +69,7 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     FRICTION_COEFFICIENT = 0.70
     NORMAL_STRESS = 10.0     # MPa
     Y_PMMA = 3000.0          # MPa
-    MESH_SIZE = 20.00
+    MESH_SIZE = 2.00 * scale_factor
     RUPTURE_START = 55.00
     RESISTANCE_AREA_LENGTH = 220.0  # mm, length of the resistance area
 
@@ -74,34 +77,29 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     # 0.1 Helpers: scale all parts (spring included)
     # ---------------------------------------------------------------------------
     s = float(scale_factor)
-    def S(v):  # scale a 3-tuple
-        return (s*v[0], s*v[1], s*v[2])
+    # def S(v):  # scale a 3-tuple
+    #     return (s*v[0], s*v[1], s*v[2])
 
     # scaled geometry (all)
     W_s, H_s, DEPTH_s    = s*W, s*H, s*DEPTH
     CENTER_D_s           = s*CENTER_D
     PL_W_s, PL_H_s, PL_D_s   = s*PL_W, s*PL_H, s*PL_D
     CHAMFER_s            = s*CHAMFER
-    # spring 尺寸也等比例縮放
     SPR_W_s, SPR_H_s, SPR_D_s = s*SPR_W, s*SPR_H, s*SPR_D
 
     # placements
-    T_LEFT_s   = S(T_LEFT)
-    T_RIGHT_s  = S(T_RIGHT)  # 供 BC_front_R 使用（照你的要求）
-    T_PLT_s    = S(T_PLT)
+    T_LEFT_s   = scale(s, T_LEFT)
+    T_RIGHT_s  = scale(s, T_RIGHT)  # 供 BC_front_R 使用（照你的要求）
+    T_PLT_s    = scale(s, T_PLT)
 
-    # 右側 instance 的實際平移向量仍用「修正後」那個，但 BC 用 T_RIGHT_s
     T_RIGHT_CORRECTED_base = (50 - (-50), -20.0, 55.0)  # = (100, -20, 55)
-    T_RIGHT_CORRECTED_s = S(T_RIGHT_CORRECTED_base)
-
-    # mesh size: 所有零件都用等比例 seed，維持單元密度
-    # MESH_SIZE_s = MESH_SIZE * s
+    T_RIGHT_CORRECTED_s = scale(s, T_RIGHT_CORRECTED_base)
 
     # rupture plane y coordinate (scaled)
     y_rupture       = s*(RUPTURE_START - RUPTURE_POSITION)
     y_rupture_side  = s*(RUPTURE_START - RUPTURE_POSITION + 20.0)
 
-    # 剪移幅（自動跟尺度）：抗力~s^2，剛度~s → 幅度~s
+    # Shear amplitude: resistance ~ s^2, stiffness ~ s -> amplitude ~ s
     CONTACT_AREA     = SPR_W_s * SPR_D_s                          # mm^2 (scaled)
     SPRING_STIFFNESS = Y_PMMA * CONTACT_AREA / SPR_H_s            # N/mm (scaled)
     RESISTANCE       = 2 * FRICTION_COEFFICIENT * DEPTH_s * (s*RESISTANCE_AREA_LENGTH) * NORMAL_STRESS
@@ -203,7 +201,6 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
     asm.translate(instanceList=('side_right',), vector=T_RIGHT_CORRECTED_s)
     asm.translate(instanceList=('steel_plate',), vector=T_PLT_s)
 
-    # 讓 spring 在 X/Z 置中並貼在鋼板頂面（使用縮放後尺寸）
     T_SPR_s = (
         T_PLT_s[0] + (PL_W_s - SPR_W_s) * 0.5,
         T_PLT_s[1] + PL_H_s,
@@ -380,7 +377,6 @@ def build_model(RUPTURE_POSITION, scale_factor=1.0):
 # Main program loop
 # -----------------------------
 RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
-# RUPTURE_POSITIONS = [105]
 SCALES = [5]
 
 

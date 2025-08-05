@@ -3,9 +3,15 @@ from abaqusConstants import INTEGRATION_POINT
 import matplotlib.pyplot as plt
 import numpy as np
 import uuid
+import os
 
 
 RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
+
+AVERAGE_FOLDER = 'Average'
+HEATMAP_FOLDER = 'Heatmap'
+os.makedirs(AVERAGE_FOLDER, exist_ok=True)
+os.makedirs(HEATMAP_FOLDER, exist_ok=True)
 
 for RUPTURE_POSITION in RUPTURE_POSITIONS:
     
@@ -79,8 +85,46 @@ for RUPTURE_POSITION in RUPTURE_POSITIONS:
     plt.axis('equal')
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f'Shear-Stress-{RUPTURE_POSITION}-Heatmap-S12.png', dpi=300)
-    plt.savefig(f'Shear-Stress-{RUPTURE_POSITION}-Heatmap-S12.pdf', dpi=300)
+    # plt.savefig(f'Shear-Stress-{RUPTURE_POSITION}-Heatmap-S12.png', dpi=300)
+    plt.savefig(f'./Heatmap/Shear-Stress-{RUPTURE_POSITION}-Heatmap-S12.pdf', dpi=300)
     # plt.show()
+    plt.close()
+
+    
+    # === 8. Compute average S12 along Y ===
+    # 將 Y 值分成 bins
+    num_bins = 100
+    y_array = np.array(ys)
+    s12_array = np.array(s12)
+
+    y_min, y_max = y_array.min(), y_array.max()
+    bin_edges = np.linspace(y_min, y_max, num_bins + 1)
+    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+    s12_means = np.zeros(num_bins)
+    counts = np.zeros(num_bins)
+
+    for yi, s in zip(y_array, s12_array):
+        bin_idx = np.searchsorted(bin_edges, yi, side='right') - 1
+        if 0 <= bin_idx < num_bins:
+            s12_means[bin_idx] += s
+            counts[bin_idx] += 1
+
+    valid = counts > 0
+    s12_means[valid] /= counts[valid]
+    s12_means[~valid] = np.nan
+
+    # === 9. Plot Y vs Avg(S12) ===
+    plt.figure(figsize=(8, 4))
+    # plt.plot(bin_centers, s12_means, marker='o', linewidth=1.5)
+    plt.plot(bin_centers, s12_means, 'o')
+    plt.xlabel('Y Position')
+    plt.ylabel('Average S12 (MPa)')
+    plt.title('Y-direction Averaged Shear Stress S12')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(f'./Average/Shear-Stress-{RUPTURE_POSITION}-Y-Averaged.pdf', dpi=300)
+    # plt.show()
+    plt.close()
+
 
     odb.close()
