@@ -4,10 +4,10 @@
 #SBATCH --job-name=BlockJob-Rev
 #SBATCH --output=/home/gauss112/outs/Abaqus-%j.out
 #SBATCH --error=/home/gauss112/outs/Abaqus-%j.err
-#SBATCH --ntasks=48
+#SBATCH --ntasks=20
 #SBATCH --cpus-per-task=1
 #SBATCH --nodes=1
-#SBATCH --time=48:00:00
+#SBATCH --time=95:30:00
 #SBATCH --mem=320G
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=b09501028@ntu.edu.tw
