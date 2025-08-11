@@ -349,28 +349,21 @@ def build_model(RUPTURE_POSITION):
         name='Set_shear',
         faces=asm.surfaces['Surf_shear'].faces
     )
-    # MODEL.DisplacementBC(
-    #     name='shear_disp',
-    #     createStepName='Shear_Load',
-    #     region=MODEL.rootAssembly.sets['Set_shear'],
-    #     u1=UNSET,
-    #     u2=-SHEAR_AMPLITUDE,
-    #     u3=UNSET,
-    #     ur1=UNSET, ur2=UNSET, ur3=UNSET,
-    #     amplitude=UNSET,
-    #     fixed=OFF,
-    #     distributionType=UNIFORM,
-    #     fieldName='',
-    #     localCsys=None
-    # )
-
-    # MODEL.Pressure(
-    #     name='p_on_face',
-    #     createStepName='Shear_Load',
-    #     region=MODEL.rootAssembly.surfaces['Surf_shear'],
-    #     magnitude=RESISTANCE_STRESS,
-    #     amplitude=UNSET
-    # )
+    
+    MODEL.DisplacementBC(
+        name='shear_disp',
+        createStepName='Shear_Load',
+        region=MODEL.rootAssembly.sets['Set_shear'],
+        u1=UNSET,
+        u2=-SHEAR_AMPLITUDE,
+        u3=UNSET,
+        ur1=UNSET, ur2=UNSET, ur3=UNSET,
+        amplitude=UNSET,
+        fixed=OFF,
+        distributionType=UNIFORM,
+        fieldName='',
+        localCsys=None
+    )
 
     # ---------------------------------------------------------------------------
     # 8. Meshing
