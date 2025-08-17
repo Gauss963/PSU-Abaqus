@@ -62,7 +62,7 @@ def build_model(RUPTURE_POSITION):
     FRICTION_COEFFICIENT = 0.70
     NORMAL_STRESS = 10.0  # MPa [5.0, 7.5, 10.0, 12.5]
     Y_PMMA = 3000.0       # MPa, PMMA Young's modulus
-    MESH_SIZE = 2.00
+    MESH_SIZE = 0.200
     RUPTURE_START = 55.00
     RESISTANCE_AREA_LENGTH = 220.0 # mm, length of the resistance area
 
@@ -310,26 +310,26 @@ def build_model(RUPTURE_POSITION):
     # ---------------------------------------------------------------------------
     # 6. Analysis steps
     # ---------------------------------------------------------------------------
-    # MODEL.StaticStep(name='Normal_Load', previous='Initial', nlgeom=ON)
-    # MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load')
-    MODEL.StaticStep(
-        name='Normal_Load',
-        previous='Initial',
-        nlgeom=ON,
-        timePeriod=1.0,
-        initialInc=1e-5,
-        minInc=1e-7,
-        maxInc=0.1
-    )
+    MODEL.StaticStep(name='Normal_Load', previous='Initial', nlgeom=ON)
+    MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load', nlgeom=ON)
+    # MODEL.StaticStep(
+    #     name='Normal_Load',
+    #     previous='Initial',
+    #     nlgeom=ON,
+    #     timePeriod=1.0,
+    #     initialInc=1e-5,
+    #     minInc=1e-7,
+    #     maxInc=0.1
+    # )
 
-    MODEL.StaticStep(
-        name='Shear_Load',
-        previous='Normal_Load',
-        timePeriod=1.0,
-        initialInc=1e-5,
-        minInc=1e-7,
-        maxInc=0.1
-    )
+    # MODEL.StaticStep(
+    #     name='Shear_Load',
+    #     previous='Normal_Load',
+    #     timePeriod=1.0,
+    #     initialInc=1e-5,
+    #     minInc=1e-7,
+    #     maxInc=0.1
+    # )
 
     # ---------------------------------------------------------------------------
     # 7. Loads
