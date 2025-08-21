@@ -1,9 +1,15 @@
 from odbAccess import openOdb
 import numpy as np
 
-RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
+MESH_SIZES = [20, 15, 10, 5]
+RUPTURE_POSITIONS = [115, 110, 105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
+
+# for MESH_SIZE in MESH_SIZES:
+    
 
 for RUPTURE_POSITION in RUPTURE_POSITIONS:
+
+    # odb_path = f'./BlockJob-{MESH_SIZE}-{RUPTURE_POSITION}.odb'
     odb_path = f'./BlockJob-{RUPTURE_POSITION}.odb'
     print(f"\nOpening {odb_path}...")
     odb = openOdb(odb_path)
@@ -53,5 +59,6 @@ for RUPTURE_POSITION in RUPTURE_POSITIONS:
         else:
             print(f"[{var}] not found in field outputs.")
 
+    # np.savez(f'strain-energy-{MESH_SIZE}-{RUPTURE_POSITION}.npz', **energy_data)
     np.savez(f'strain-energy-{RUPTURE_POSITION}.npz', **energy_data)
     odb.close()

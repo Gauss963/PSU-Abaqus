@@ -6,7 +6,7 @@ import uuid
 import os
 
 
-RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
+RUPTURE_POSITIONS = [115, 110, 105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
 
 AVERAGE_FOLDER = 'Average'
 HEATMAP_FOLDER = 'Heatmap'

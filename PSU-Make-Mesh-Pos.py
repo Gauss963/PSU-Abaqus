@@ -35,7 +35,7 @@ def add_chamfer(part, size):
     part.Chamfer(length=size, edgeList=tuple(vertical_edges))
 
 
-def build_model(RUPTURE_POSITION):
+def build_model(RUPTURE_POSITION, MESH_SIZE):
 
     # ---------------------------------------------------------------------------
     # 0. Parameters
@@ -43,7 +43,7 @@ def build_model(RUPTURE_POSITION):
 
     # Job names
     model_name = f'Block-Assembly-{int(RUPTURE_POSITION)}'
-    job_name = f'BlockJob-{int(RUPTURE_POSITION)}'
+    job_name = f'BlockJob-{int(MESH_SIZE)}-{int(RUPTURE_POSITION)}'
 
     # Geometry parameters
     W,  H,  DEPTH   = 100.0, 160.0, 50.0          # side-block  X, Y, Z
@@ -60,9 +60,10 @@ def build_model(RUPTURE_POSITION):
 
     # Simulation parameters
     FRICTION_COEFFICIENT = 0.70
-    NORMAL_STRESS = 10.0  # MPa [5.0, 7.5, 10.0, 12.5]
+    NORMAL_STRESS =  7.5  # MPa [5.0, 7.5, 10.0, 12.5]
     Y_PMMA = 3000.0       # MPa, PMMA Young's modulus
-    MESH_SIZE = 0.500
+    # MESH_SIZE = 0.200
+    MESH_SIZE = MESH_SIZE / 10
     RUPTURE_START = 55.00
     RESISTANCE_AREA_LENGTH = 220.0 # mm, length of the resistance area
 
@@ -451,7 +452,11 @@ def build_model(RUPTURE_POSITION):
 # -----------------------------
 # Main program loop
 # -----------------------------
-RUPTURE_POSITIONS = [115, 110, 105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
+RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10, 5] # This is the list of rupture positions to iterate over
+RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
 
-for RUPTURE_POSITION in RUPTURE_POSITIONS:
-    build_model(RUPTURE_POSITION)
+MESH_SIZES = [20, 15, 10, 5]
+
+for MESH_SIZE in MESH_SIZES:
+    for RUPTURE_POSITION in RUPTURE_POSITIONS:
+        build_model(RUPTURE_POSITION, MESH_SIZE)
