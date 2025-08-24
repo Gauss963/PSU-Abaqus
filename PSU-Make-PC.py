@@ -310,26 +310,26 @@ def build_model(RUPTURE_POSITION):
     # ---------------------------------------------------------------------------
     # 6. Analysis steps
     # ---------------------------------------------------------------------------
-    # MODEL.StaticStep(name='Normal_Load', previous='Initial', nlgeom=ON)
-    # MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load')
-    MODEL.StaticStep(
-        name='Normal_Load',
-        previous='Initial',
-        nlgeom=ON,
-        timePeriod=1.0,
-        initialInc=1e-5,
-        minInc=1e-7,
-        maxInc=0.1
-    )
+    MODEL.StaticStep(name='Normal_Load', previous='Initial', nlgeom=ON)
+    MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load', nlgeom=ON)
+    # MODEL.StaticStep(
+    #     name='Normal_Load',
+    #     previous='Initial',
+    #     nlgeom=ON,
+    #     timePeriod=1.0,
+    #     initialInc=1e-5,
+    #     minInc=1e-7,
+    #     maxInc=0.1
+    # )
 
-    MODEL.StaticStep(
-        name='Shear_Load',
-        previous='Normal_Load',
-        timePeriod=1.0,
-        initialInc=1e-5,
-        minInc=1e-7,
-        maxInc=0.1
-    )
+    # MODEL.StaticStep(
+    #     name='Shear_Load',
+    #     previous='Normal_Load',
+    #     timePeriod=1.0,
+    #     initialInc=1e-5,
+    #     minInc=1e-7,
+    #     maxInc=0.1
+    # )
 
     # ---------------------------------------------------------------------------
     # 7. Loads
@@ -444,8 +444,7 @@ def build_model(RUPTURE_POSITION):
 # -----------------------------
 # Main program loop
 # -----------------------------
-RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10, 5] # This is the list of rupture positions to iterate over
-RUPTURE_POSITIONS = [105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
+RUPTURE_POSITIONS = [115, 110, 105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
 
 for RUPTURE_POSITION in RUPTURE_POSITIONS:
     build_model(RUPTURE_POSITION)

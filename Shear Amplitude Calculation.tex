@@ -22,7 +22,7 @@
     \item $A$: Contact area between spring and plate, $A = \texttt{SPR\_W} \times \texttt{SPR\_D}$, in mm$^2$
     \item $h$: Height of the spring ($\texttt{SPR\_H}$), in mm
     \item $D$: Depth of contact interface ($\texttt{DEPTH}$), in mm
-    \item $L$: Rupture length along contact interface ($\texttt{RUPTURE\_POSITION}$), in mm
+    \item $L$: Resistance area length, I use \SI{200}{\milli\meter}
 \end{itemize}
 
 \section*{Step 1: Frictional Resistance Force}
@@ -61,7 +61,7 @@ Thus, $\delta$ (shear amplitude) has unit of \si{\milli\meter}, which is physica
 In Python-style code:
 
 \begin{verbatim}
-RESISTANCE = 2 * FRICTION_COEFFICIENT * DEPTH * 160 (mm) * NORMAL_STRESS
+RESISTANCE = 2 * FRICTION_COEFFICIENT * DEPTH * 200 (mm) * NORMAL_STRESS
 SHEAR_AMPLITUDE = RESISTANCE * SPR_H / ( SPR_W * SPR_D * Y_PMMA )
 \end{verbatim}
 
