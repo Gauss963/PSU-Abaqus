@@ -58,6 +58,7 @@ mv /home/gauss112/abaqus/*.odb "$DEST_DIR"
 cp /home/gauss112/Documents/ELSE.odbs/read-odb.py "$DEST_DIR"
 cp /home/gauss112/Documents/ELSE.odbs/read-npz.py "$DEST_DIR"
 cp /home/gauss112/Documents/ELSE.odbs/read-shear.py "$DEST_DIR"
+cp /home/gauss112/Documents/ELSE.odbs/read-shear-to-npz.py "$DEST_DIR"
 cd "$DEST_DIR"
 abaqus python ./read-odb.py
 
@@ -65,5 +66,5 @@ module load tools/miniconda3
 conda deactivate
 conda activate PSU-FEM
 python ./read-npz.py
-
+abaqus python ./read-shear-to-npz.py
 abaqus python ./read-shear.py
