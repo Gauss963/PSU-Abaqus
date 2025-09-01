@@ -62,7 +62,7 @@ def build_model(RUPTURE_POSITION):
     FRICTION_COEFFICIENT = 0.70
     NORMAL_STRESS = 10.0  # MPa [5.0, 7.5, 10.0, 12.5]
     Y_PMMA = 3000.0       # MPa, PMMA Young's modulus
-    MESH_SIZE = 2.000
+    MESH_SIZE = 2.0#3#0.500
     RUPTURE_START = 55.00
     RESISTANCE_AREA_LENGTH = 220.0 # mm, length of the resistance area
 
@@ -283,7 +283,7 @@ def build_model(RUPTURE_POSITION):
     # ---------------------------------------------------------------------------
     # 5. Boundary conditions
     # ---------------------------------------------------------------------------
-    y_bot = -H/2 + T_LEFT[1]
+    y_bot = -H/2 + T_LEFT[1] # -160/2+(-20)=-100
     bot_L = asm.instances['side_left'].faces.getByBoundingBox(yMin=y_bot-1e-3, yMax=y_bot+1e-3)
     bot_R = asm.instances['side_right'].faces.getByBoundingBox(yMin=y_bot-1e-3, yMax=y_bot+1e-3)
     asm.Set(name='left_bot',  faces=bot_L)
@@ -291,24 +291,21 @@ def build_model(RUPTURE_POSITION):
     MODEL.DisplacementBC('BC_left_bot',  'Initial', asm.sets['left_bot'],  u2=0.0)
     MODEL.DisplacementBC('BC_right_bot', 'Initial', asm.sets['right_bot'], u2=0.0)
 
-    x_sym = -W/2 + T_LEFT[0]
+    x_sym = -W/2 + T_LEFT[0] # -100/2+(-100)
     inst_left = asm.instances['side_left']
     lf = inst_left.faces.getByBoundingBox(xMin=x_sym-1e-3, xMax=x_sym+1e-3)
     asm.Set(name='left_face', faces=lf)
     MODEL.DisplacementBC('BC_left_face', 'Initial', asm.sets['left_face'], u1=0.0)
 
-    z_L = DEPTH + T_LEFT[2]
+    z_L = DEPTH + T_LEFT[2] # 50 + (5)
     z_R = DEPTH + T_RIGHT[2]
-    edge_L = inst_left.edges.getByBoundingBox(zMin=z_L-1e-3, zMax=z_L+1e-3)
+    # edge_L = inst_left.edges.getByBoundingBox(zMin=z_L-1e-3, zMax=z_L+1e-3)
     inst_right = asm.instances['side_right']
-    edge_R = inst_right.edges.getByBoundingBox(zMin=z_R-1e-3, zMax=z_R+1e-3)
-    asm.Set(name='front_edges_L', edges=edge_L)
-    asm.Set(name='front_edges_R', edges=edge_R)
-    MODEL.DisplacementBC('BC_front_L', 'Initial', asm.sets['front_edges_L'], u3=0.0)
-    # MODEL.DisplacementBC('BC_front_R', 'Initial', asm.sets['front_edges_R'], u3=0.0)                          # Default before 2025/08/30
-
-    asm.Set(name='Set-12', vertices=asm.instances['side_right'].vertices.getSequenceFromMask(('[#800 ]', ), ))  # B.C. Add at 2025/08/30
-    MODEL.DisplacementBC('BC_front_bot_u3_R', 'Initial', asm.sets['Set-12'], u3=0.0)                            # B.C. Add at 2025/08/30
+    # edge_R = inst_right.edges.getByBoundingBox(zMin=z_R-1e-3, zMax=z_R+1e-3)
+    # asm.Set(name='front_edges_L', edges=edge_L)
+    # asm.Set(name='front_edges_R', edges=edge_R)
+    # MODEL.DisplacementBC('BC_front_L', 'Initial', asm.sets['front_edges_L'], u3=0.0)
+    # MODEL.DisplacementBC('BC_front_R', 'Initial', asm.sets['front_edges_R'], u3=0.0)
 
     # ---------------------------------------------------------------------------
     # 6. Analysis steps
@@ -372,7 +369,7 @@ def build_model(RUPTURE_POSITION):
     # 8. Meshing
     # ---------------------------------------------------------------------------
 
-    elem_type = ElemType(elemCode=C3D8I, elemLibrary=STANDARD)
+    elem_type = ElemType(elemCode=C3D20, elemLibrary=STANDARD)
     inst_plt = asm.instances['steel_plate']
     ctr_inst = asm.instances['center_block']
     for inst in (inst_left, inst_right, inst_spr, inst_plt, ctr_inst):
@@ -381,6 +378,12 @@ def build_model(RUPTURE_POSITION):
         asm.generateMesh(regions=(inst,))
     if 'Model-1' in mdb.models:
         del mdb.models['Model-1']
+
+    # PICK NODE AFTER MESHING
+    delta = 1e-3
+    node_L = inst_left.nodes.getByBoundingBox(zMin=z_L-delta, zMax=z_L+delta,yMin=y_bot-delta, yMax=y_bot+delta,xMin=x_sym-delta, xMax=x_sym+delta)
+    asm.Set(name='front_nodes_L', nodes=node_L)
+    MODEL.DisplacementBC('BC_front_L', 'Initial', asm.sets['front_nodes_L'], u3=0.0)
 
     # ---------------------------------------------------------------------------
     # 9. Setup output requests
@@ -455,6 +458,7 @@ def build_model(RUPTURE_POSITION):
 # Main program loop
 # -----------------------------
 RUPTURE_POSITIONS = [115, 110, 105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
+# RUPTURE_POSITIONS = [75]
 
 for RUPTURE_POSITION in RUPTURE_POSITIONS:
     build_model(RUPTURE_POSITION)

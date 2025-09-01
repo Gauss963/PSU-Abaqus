@@ -4,11 +4,11 @@
 #SBATCH --job-name=1x-10MPa
 #SBATCH --output=/home/gauss112/outs/Abaqus-%j.out
 #SBATCH --error=/home/gauss112/outs/Abaqus-%j.err
-#SBATCH --ntasks=20
+#SBATCH --ntasks=96
 #SBATCH --cpus-per-task=1
 #SBATCH --nodes=1
 #SBATCH --time=95:30:00
-#SBATCH --mem=80G
+#SBATCH --mem=400G
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=b09501028@ntu.edu.tw
 
@@ -56,6 +56,8 @@ mv /work1/gauss112/abaqus/*.odb "$DEST_DIR"
 cp /work1/gauss112/ELSE.odbs/read-odb.py "$DEST_DIR"
 cp /work1/gauss112/ELSE.odbs/read-npz.py "$DEST_DIR"
 cp /work1/gauss112/ELSE.odbs/read-shear.py "$DEST_DIR"
+cp /work1/gauss112/ELSE.odbs/read-shear-Ke.py "$DEST_DIR"
+cp /work1/gauss112/ELSE.odbs/read-shear-to-npz.py "$DEST_DIR"
 cd "$DEST_DIR"
 abaqus python ./read-odb.py
 
@@ -63,5 +65,6 @@ module load tools/miniconda3
 conda deactivate
 conda activate PSU-FEM
 python ./read-npz.py
-
+abaqus python ./read-shear-to-npz.py
 abaqus python ./read-shear.py
+abaqus python ./read-shear-Ke.py
