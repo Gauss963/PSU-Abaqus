@@ -4,42 +4,42 @@ import numpy as np
 import uuid
 import os
 
-# 定義破裂位置
+# Define rupture positions
 RUPTURE_POSITIONS = [115, 110, 105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
 
-# 創建輸出資料夾
+# Create output folder
 OUTPUT_FOLDER = 'ShearFace'
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 for RUPTURE_POSITION in RUPTURE_POSITIONS:
     
-    # === 1. 開啟 ODB ===
+    # === 1. Open ODB ===
     odb_path = f'./BlockJob-{RUPTURE_POSITION}.odb'
     print(f"\nProcessing {odb_path}...")
     
     try:
         odb = openOdb(odb_path)
         
-        # 取得步驟和框架
+        # Get step and frame
         step = odb.steps['Shear_Load']
-        frame = step.frames[-1]  # 最後一個框架
+        frame = step.frames[-1]  # Last frame
         stress_field = frame.fieldOutputs['S']
         
-        # === 2. 取得表面元素 ===
+        # === 2. Get surface elements ===
         surf1 = odb.rootAssembly.surfaces['RIGHT-LEFT-TIE']
         surf2 = odb.rootAssembly.surfaces['RIGHT-LEFT-FRICTION']
         
-        # 展開元素陣列
+        # Expand element array
         all_elements = []
         for ea in list(surf1.elements) + list(surf2.elements):
             all_elements.extend(ea)
         
-        # 移除重複並按標籤排序
+        # Remove duplicates and sort by label
         unique_labels = sorted(set(el.label for el in all_elements))
         instance_name = 'SIDE_RIGHT'
         instance = odb.rootAssembly.instances[instance_name]
         
-        # === 3. 準備節點查詢表：nodeLabel -> coordinate ===
+        # === 3. Prepare node lookup table: nodeLabel -> coordinate ===
         node_coord_map = {node.label: node.coordinates for node in instance.nodes}
         
         # === 4. elementLabel -> element centroid ===
@@ -52,24 +52,24 @@ for RUPTURE_POSITION in RUPTURE_POSITIONS:
                 z = np.mean([pt[2] for pt in coords])
                 label_to_coord[el.label] = (x, y, z)
         
-        # === 5. 創建區域 ===
+        # === 5. Create region ===
         region_name = 'TEMP_REGION_' + uuid.uuid4().hex[:8]
         region = odb.rootAssembly.ElementSetFromElementLabels(
             name=region_name,
             elementLabels=((instance_name, unique_labels),)
         )
         
-        # === 6. 提取應力數據 ===
+        # === 6. Extract stress data ===
         subset = stress_field.getSubset(region=region, position=INTEGRATION_POINT)
         
-        # 初始化數據列表
+        # Initialize data lists
         coords = []
         s12_vals = []
         s11_vals = []
-        s22_vals = []  # 可能會用到
-        s33_vals = []  # 可能會用到
-        s13_vals = []  # 可能會用到
-        s23_vals = []  # 可能會用到
+        s22_vals = []  # May be used
+        s33_vals = []  # May be used
+        s13_vals = []  # May be used
+        s23_vals = []  # May be used
         element_labels = []
         
         for v in subset.values:
@@ -78,8 +78,8 @@ for RUPTURE_POSITION in RUPTURE_POSITIONS:
                 coords.append(label_to_coord[label])
                 element_labels.append(label)
                 
-                # 提取所有應力分量
-                # Abaqus 應力張量順序: S11, S22, S33, S12, S13, S23
+                # Extract all stress components
+                # Abaqus stress tensor order: S11, S22, S33, S12, S13, S23
                 s11_vals.append(v.data[0])  # S11
                 s22_vals.append(v.data[1])  # S22
                 s33_vals.append(v.data[2])  # S33
@@ -87,7 +87,7 @@ for RUPTURE_POSITION in RUPTURE_POSITIONS:
                 s13_vals.append(v.data[4])  # S13
                 s23_vals.append(v.data[5])  # S23
         
-        # === 7. 轉換為 numpy 陣列 ===
+        # === 7. Convert to numpy arrays ===
         coords_array = np.array(coords)
         x_coords = coords_array[:, 0]
         y_coords = coords_array[:, 1]
@@ -100,32 +100,32 @@ for RUPTURE_POSITION in RUPTURE_POSITIONS:
         s13 = np.array(s13_vals)
         s23 = np.array(s23_vals)
         
-        # 計算摩擦係數
-        # 避免除以零的問題
+        # Calculate friction coefficient
+        # Avoid division by zero
         with np.errstate(divide='ignore', invalid='ignore'):
             mu = np.where(s11 != 0, -s12 / s11, np.nan)
         
-        # === 8. 保存為 NPZ 檔案 ===
+        # === 8. Save as NPZ file ===
         output_file = os.path.join(OUTPUT_FOLDER, f'ShearFace-{RUPTURE_POSITION}.npz')
         
-        # 保存所有相關數據
+        # Save all relevant data
         np.savez(output_file,
-                 # 座標
+                 # Coordinates
                  x=x_coords,
                  y=y_coords,
                  z=z_coords,
-                 # 應力分量
+                 # Stress components
                  s11=s11,
                  s22=s22,
                  s33=s33,
                  s12=s12,
                  s13=s13,
                  s23=s23,
-                 # 計算值
+                 # Calculated values
                  mu=mu,
-                 # 元素標籤（如果需要追蹤）
+                 # Element labels (for tracking if needed)
                  element_labels=element_labels,
-                 # 元數據
+                 # Metadata
                  rupture_position=RUPTURE_POSITION,
                  instance_name=instance_name,
                  step_name='Shear_Load',
@@ -138,7 +138,7 @@ for RUPTURE_POSITION in RUPTURE_POSITIONS:
         print(f"  Z range: [{np.min(z_coords):.3f}, {np.max(z_coords):.3f}]")
         print(f"  S12 range: [{np.min(s12):.3f}, {np.max(s12):.3f}]")
         
-        # 關閉 ODB
+        # Close ODB
         odb.close()
         
     except Exception as e:
