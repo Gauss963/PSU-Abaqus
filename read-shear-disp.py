@@ -12,8 +12,8 @@ def _node_coord_map(instance):
 
 def _surface_node_labels_by_plane(surf1, surf2, instance, round_nd=6, axis='x'):
     """
-    從兩個 surface 的 elements 蒐集候選節點，依 axis 座標分箱取眾數（該面所在平面），
-    回傳 (surface_node_labels, plane_value)。
+    Collect candidate nodes from the elements of two surfaces, bin by the coordinate along the given axis,
+    take the mode (the plane where the surface lies), and return (surface_node_labels, plane_value).
     """
     idx = {'x':0, 'y':1, 'z':2}[axis]
     candidate = set()
@@ -33,30 +33,27 @@ def _surface_node_labels_by_plane(surf1, surf2, instance, round_nd=6, axis='x'):
 
 def _collect_surface_nodal_US(instance, disp_field, stress_field, surface_node_labels):
     """
-    取整個 instance 的 NODAL 位移、ELEMENT_NODAL 應力，濾到 surface_node_labels。
-    將同一 node 的應力（來自不同元素）平均；最後按 (y,z,nodeLabel) 排序，回傳對齊好的 arrays。
+    Collect NODAL displacements and ELEMENT_NODAL stresses for the entire instance, filter to surface_node_labels.
+    Average stresses for the same node (from different elements); finally sort by (y,z,nodeLabel), and return aligned arrays.
     """
     coord_map = _node_coord_map(instance)
 
-    # 位移（NODAL）
+    # Displacement (NODAL)
     disp_subset = disp_field.getSubset(region=instance, position=NODAL)
     u2_by_node = {}
     for v in disp_subset.values:
         nid = v.nodeLabel
         if nid in surface_node_labels:
-            u2_by_node[nid] = float(v.data[1])  # U2
+            u2_by_node[nid] = float(v.data[1])
 
-    # 應力（ELEMENT_NODAL） -> 同 node 平均
     stress_subset = stress_field.getSubset(region=instance, position=ELEMENT_NODAL)
     s_by_node = defaultdict(list)
     for v in stress_subset.values:
         nid = v.nodeLabel
         if nid in surface_node_labels:
-            s_by_node[nid].append(np.array(v.data, dtype=float))  # [S11..S23]
+            s_by_node[nid].append(np.array(v.data, dtype=float))
 
-    # 只保留兩者都有或至少有座標的一致節點；主要依位移為準
     node_ids = sorted([nid for nid in surface_node_labels if nid in coord_map and nid in u2_by_node])
-    # 依 (y,z,node) 排序，確保穩定
     node_ids.sort(key=lambda nid: (coord_map[nid][1], coord_map[nid][2], nid))
 
     xs, ys, zs = [], [], []
@@ -75,7 +72,7 @@ def _collect_surface_nodal_US(instance, disp_field, stress_field, surface_node_l
             s11.append(meanS[0]); s22.append(meanS[1]); s33.append(meanS[2])
             s12.append(meanS[3]); s13.append(meanS[4]); s23.append(meanS[5])
         else:
-            # 若該節點沒有 ELEMENT_NODAL 應力（極少數），填 nan
+            # If the node does not have ELEMENT_NODAL stress (very rare), fill with nan
             s11.append(np.nan); s22.append(np.nan); s33.append(np.nan)
             s12.append(np.nan); s13.append(np.nan); s23.append(np.nan)
 
@@ -118,35 +115,35 @@ for RUPTURE_POSITION in RUPTURE_POSITIONS:
         inst_center_name = 'CENTER_BLOCK'
         inst_center = odb.rootAssembly.instances[inst_center_name]
 
-        # 以 X 為法向（RIGHT/LEFT 面），找表面節點
+        # Use X as normal (RIGHT/LEFT face), find surface nodes
         right_nodes, x_right_plane = _surface_node_labels_by_plane(surf1_right, surf2_right, inst_right, axis='x')
         center_nodes, x_center_plane = _surface_node_labels_by_plane(surf1_center, surf2_center, inst_center, axis='x')
 
-        # 收集節點版 U2/S（右、中央，各自對齊）
+        # Collect nodal U2/S for nodes on the surface (right, center, each aligned)
         (x_r, y_r, z_r, s11_r, s22_r, s33_r, s12_r, s13_r, s23_r, u2_r, mu_r, node_lbl_r) = \
             _collect_surface_nodal_US(inst_right, disp_field, stress_field, right_nodes)
 
         (x_c, y_c, z_c, s11_c, s22_c, s33_c, s12_c, s13_c, s23_c, u2_c, mu_c, node_lbl_c) = \
             _collect_surface_nodal_US(inst_center, disp_field, stress_field, center_nodes)
 
-        # ====== 覆蓋舊 key 的寫檔（右面作為 backward-compat 預設） ======
+        # ====== Overwrite old key for file output (right face as backward-compat default) ======
         out = {
-            # 舊版相容（右側）
+            # Old version compatibility (right side)
             'x': x_r, 'y': y_r, 'z': z_r,
             's11': s11_r, 's22': s22_r, 's33': s33_r,
             's12': s12_r, 's13': s13_r, 's23': s23_r,
             'mu': mu_r,
-            # 注意：這裡放 node labels 以維持 int 陣列語意與長度；舊名不變
+            # Note: node labels are kept for int array semantics and length; old name unchanged
             'element_labels': node_lbl_r,
 
-            # 右側詳細
+            # Right side details
             'x_right': x_r, 'y_right': y_r, 'z_right': z_r,
             's11_right': s11_r, 's22_right': s22_r, 's33_right': s33_r,
             's12_right': s12_r, 's13_right': s13_r, 's23_right': s23_r,
             'u2_right': u2_r, 'mu_right': mu_r,
             'element_labels_right': node_lbl_r,
 
-            # 中央詳細
+            # Center details
             'x_center': x_c, 'y_center': y_c, 'z_center': z_c,
             's11_center': s11_c, 's22_center': s22_c, 's33_center': s33_c,
             's12_center': s12_c, 's13_center': s13_c, 's23_center': s23_c,
@@ -160,8 +157,6 @@ for RUPTURE_POSITION in RUPTURE_POSITIONS:
             'frame_index': -1
         }
 
-        # 另存：相對位移（用 (y,z) 對齊兩面節點）
-        # 建立 (y,z) → index 映射
         key_r = {(round(float(y_r[i]),6), round(float(z_r[i]),6)): i for i in range(len(y_r))}
         yy, zz, u2_rel = [], [], []
         for j in range(len(y_c)):
