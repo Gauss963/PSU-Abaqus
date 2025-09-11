@@ -89,7 +89,11 @@ def _collect_surface_nodal_US(instance, disp_field, stress_field, surface_node_l
 
 # ====================== main ======================
 
-RUPTURE_POSITIONS = [115, 110, 105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
+rev = False
+if rev:
+    RUPTURE_POSITIONS = [145, 135, 125, 115, 105, 95, 85, 80, 75, 70, 65, 60, 55, 50, 45]
+else:
+    RUPTURE_POSITIONS = [115, 110, 105, 100, 95, 90, 85, 80, 75, 65, 55, 45, 35, 25, 15, 5]
 OUTPUT_FOLDER = 'ShearFace'
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 

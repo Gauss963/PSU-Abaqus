@@ -305,34 +305,16 @@ def build_model(RUPTURE_POSITION):
     asm.Set(name='front_edges_L', edges=edge_L)
     asm.Set(name='front_edges_R', edges=edge_R)
     MODEL.DisplacementBC('BC_front_L', 'Initial', asm.sets['front_edges_L'], u3=0.0)
-    # MODEL.DisplacementBC('BC_front_R', 'Initial', asm.sets['front_edges_R'], u3=0.0)                          # Default before 2025/08/30
+    MODEL.DisplacementBC('BC_front_R', 'Initial', asm.sets['front_edges_R'], u3=0.0)                          # Default before 2025/08/30
 
-    asm.Set(name='Set-12', vertices=asm.instances['side_right'].vertices.getSequenceFromMask(('[#800 ]', ), ))  # B.C. Add at 2025/08/30
-    MODEL.DisplacementBC('BC_front_bot_u3_R', 'Initial', asm.sets['Set-12'], u3=0.0)                            # B.C. Add at 2025/08/30
+    # asm.Set(name='Set-12', vertices=asm.instances['side_right'].vertices.getSequenceFromMask(('[#800 ]', ), ))  # B.C. Add at 2025/08/30
+    # MODEL.DisplacementBC('BC_front_bot_u3_R', 'Initial', asm.sets['Set-12'], u3=0.0)                            # B.C. Add at 2025/08/30
 
     # ---------------------------------------------------------------------------
     # 6. Analysis steps
     # ---------------------------------------------------------------------------
     MODEL.StaticStep(name='Normal_Load', previous='Initial', nlgeom=ON)
     MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load', nlgeom=ON)
-    # MODEL.StaticStep(
-    #     name='Normal_Load',
-    #     previous='Initial',
-    #     nlgeom=ON,
-    #     timePeriod=1.0,
-    #     initialInc=1e-5,
-    #     minInc=1e-7,
-    #     maxInc=0.1
-    # )
-
-    # MODEL.StaticStep(
-    #     name='Shear_Load',
-    #     previous='Normal_Load',
-    #     timePeriod=1.0,
-    #     initialInc=1e-5,
-    #     minInc=1e-7,
-    #     maxInc=0.1
-    # )
 
     # ---------------------------------------------------------------------------
     # 7. Loads
@@ -346,7 +328,6 @@ def build_model(RUPTURE_POSITION):
     inst_spr = asm.instances['spring']
     top_spr = inst_spr.faces.getByBoundingBox(yMin=y_top_spr-1e-3, yMax=y_top_spr+1e-3)
     asm.Surface(name='Surf_shear', side1Faces=top_spr)
-
 
     region=MODEL.rootAssembly.Set(
         name='Set_shear',

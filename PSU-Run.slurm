@@ -40,6 +40,7 @@ abaqus cae noGUI=PSU-Make-DC.py
 
 # === Step 2: Run all input jobs ===
 for pos in 115 110 105 100 95 90 85 80 75 65 55 45 35 25 15 5; do
+# for pos in 45 50 55 60 65 70 75 80 85 95 105 115 125 135 145; do
     jobname="BlockJob-${pos}"
     echo "Running Abaqus job ${jobname} at $(date)"
     abaqus job=${jobname} cpus=20 mp_mode=mpi interactive
@@ -61,12 +62,14 @@ cp /home/gauss112/Documents/ELSE.odbs/read-shear.py "$DEST_DIR"
 cp /home/gauss112/Documents/ELSE.odbs/read-shear-Ke.py "$DEST_DIR"
 cp /home/gauss112/Documents/ELSE.odbs/read-shear-to-npz.py "$DEST_DIR"
 cd "$DEST_DIR"
+
 abaqus python ./read-odb.py
+abaqus python ./read-shear-disp.py
+abaqus python ./read-shear-Ke.py
+
 
 module load tools/miniconda3
 conda deactivate
 conda activate PSU-FEM
+
 python ./read-npz.py
-abaqus python ./read-shear-to-npz.py
-abaqus python ./read-shear.py
-abaqus python ./read-shear-Ke.py

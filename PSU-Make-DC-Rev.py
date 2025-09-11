@@ -21,7 +21,6 @@ from visualization import *
 from connectorBehavior import *
 
 def add_chamfer(part, size):
-    """Chamfer every vertical edge by <size> mm (Abaqus 2024)."""
     verts = part.vertices
     vertical_edges = []
     for e in part.edges:
@@ -44,7 +43,7 @@ def build_model(RUPTURE_POSITION):
 
     # Job names
     model_name = f'Block-Assembly-{int(RUPTURE_POSITION)}'
-    job_name = f'BlockJob-Rev-{int(RUPTURE_POSITION)}'
+    job_name = f'BlockJob-{int(RUPTURE_POSITION)}'
 
     # Geometry parameters
     W,  H,  DEPTH   = 100.0, 160.0, 50.0          # side-block  X, Y, Z
@@ -61,14 +60,16 @@ def build_model(RUPTURE_POSITION):
 
     # Simulation parameters
     FRICTION_COEFFICIENT = 0.70
-    NORMAL_STRESS = 10.0  # MPa
-    Y_PMMA = 3000.0       # MPa, PMMA yield stress
-    MESH_SIZE = 2.00
+    NORMAL_STRESS = 10.0  # MPa [5.0, 7.5, 10.0, 12.5]
+    Y_PMMA = 3000.0       # MPa, PMMA Young's modulus
+    MESH_SIZE = 2.000
     RUPTURE_START = 55.00
-    RESISTANCE_AREA_LENGTH = 440.0 # mm, length of the resistance area
+    RESISTANCE_AREA_LENGTH = 220.0 # mm, length of the resistance area
 
     RESISTANCE  = 2 * FRICTION_COEFFICIENT * DEPTH * RESISTANCE_AREA_LENGTH * NORMAL_STRESS  # N
     CONTACT_AREA = SPR_W * SPR_D                                                             # mm²
+    RESISTANCE_STRESS = RESISTANCE / CONTACT_AREA                                            # MPa
+
     SPRING_STIFFNESS = Y_PMMA * CONTACT_AREA / SPR_H                                         # N/mm
     SHEAR_AMPLITUDE = RESISTANCE / SPRING_STIFFNESS                                          # mm
 
@@ -304,13 +305,16 @@ def build_model(RUPTURE_POSITION):
     asm.Set(name='front_edges_L', edges=edge_L)
     asm.Set(name='front_edges_R', edges=edge_R)
     MODEL.DisplacementBC('BC_front_L', 'Initial', asm.sets['front_edges_L'], u3=0.0)
-    MODEL.DisplacementBC('BC_front_R', 'Initial', asm.sets['front_edges_R'], u3=0.0)
+    MODEL.DisplacementBC('BC_front_R', 'Initial', asm.sets['front_edges_R'], u3=0.0)                          # Default before 2025/08/30
+
+    # asm.Set(name='Set-12', vertices=asm.instances['side_right'].vertices.getSequenceFromMask(('[#800 ]', ), ))  # B.C. Add at 2025/08/30
+    # MODEL.DisplacementBC('BC_front_bot_u3_R', 'Initial', asm.sets['Set-12'], u3=0.0)                            # B.C. Add at 2025/08/30
 
     # ---------------------------------------------------------------------------
     # 6. Analysis steps
     # ---------------------------------------------------------------------------
     MODEL.StaticStep(name='Normal_Load', previous='Initial', nlgeom=ON)
-    MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load')
+    MODEL.StaticStep(name='Shear_Load',  previous='Normal_Load', nlgeom=ON)
 
     # ---------------------------------------------------------------------------
     # 7. Loads
@@ -325,11 +329,11 @@ def build_model(RUPTURE_POSITION):
     top_spr = inst_spr.faces.getByBoundingBox(yMin=y_top_spr-1e-3, yMax=y_top_spr+1e-3)
     asm.Surface(name='Surf_shear', side1Faces=top_spr)
 
-
     region=MODEL.rootAssembly.Set(
         name='Set_shear',
         faces=asm.surfaces['Surf_shear'].faces
     )
+
     MODEL.DisplacementBC(
         name='shear_disp',
         createStepName='Shear_Load',
@@ -412,20 +416,6 @@ def build_model(RUPTURE_POSITION):
         sectionPoints=DEFAULT,
         variables=('ENER', 'ELEN', 'ELEDEN')
     )
-
-    # MODEL.FieldOutputRequest(
-    #     createStepName='Shear_Load', 
-    #     name='Side-Block-Left-Stress',
-    #     rebar=EXCLUDE,
-    #     region=MODEL.rootAssembly.allInstances['side_left'].sets['all'],
-    #     sectionPoints=DEFAULT,
-    #     variables=('S', 'MISES', 'MISESMAX', 'TSHR', 'CTSHR', 'ALPHA',
-    #             'TRIAX', 'LODE', 'VS', 'PS', 'CS11', 'ALPHAN', 'SSAVG',
-    #             'MISESONLY', 'PRESSONLY', 'SEQUT', 'YIELDPOT', 'NBSEQ', 'GKSEQ', 'E', 'VE', 
-    #             'PE', 'VEEQ', 'PEEQ', 'PEEQT', 'PEEQMAX', 'PEMAG', 'PEQC', 'EE', 'IE', 
-    #             'THE', 'NE', 'LE', 'TE', 'TEEQ', 'TEVOL', 'EEQUT', 'ER', 'FVE', 'SE', 
-    #             'SPE', 'SEPE', 'SEE', 'SEP', 'SALPHA', 'NBEEQ', 'NBPEEQ', 'GKEEQ', 
-    #             'GKPEEQ', 'SVOL', 'EVOL', 'ESOL', 'IVOL', 'STH', 'COORD'))
     
     MODEL.FieldOutputRequest(
         createStepName='Shear_Load', 
@@ -433,19 +423,19 @@ def build_model(RUPTURE_POSITION):
         rebar=EXCLUDE,
         region=MODEL.rootAssembly.allInstances['side_left'].sets['all'],
         sectionPoints=DEFAULT,
-        variables=('S', 'MISES',)
+        variables=('S', 'MISES')
     )
 
     # ---------------------------------------------------------------------------
     # 10. Job
     # ---------------------------------------------------------------------------
-    job = mdb.Job(name=job_name, model=model_name)
+    job = mdb.Job(name=job_name, model=model_name, numCpus=20, numDomains=20)
     job.writeInput()
 
 # -----------------------------
 # Main program loop
 # -----------------------------
-RUPTURE_POSITIONS = [140, 130, 120, 110, 100, 90, 80, 70, 60]
+RUPTURE_POSITIONS = [150, 145, 135, 125, 115, 105, 95, 85, 80, 75, 70, 65, 60, 55, 50, 45]
 
 for RUPTURE_POSITION in RUPTURE_POSITIONS:
     build_model(RUPTURE_POSITION)
