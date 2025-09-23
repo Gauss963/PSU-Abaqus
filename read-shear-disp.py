@@ -46,13 +46,31 @@ def _collect_surface_nodal_US(instance, disp_field, stress_field, surface_node_l
         if nid in surface_node_labels:
             u2_by_node[nid] = float(v.data[1])
 
-    stress_subset = stress_field.getSubset(region=instance, position=ELEMENT_NODAL)
+    # stress_subset = stress_field.getSubset(region=instance, position=ELEMENT_NODAL)
+    # s_by_node = defaultdict(list)
+    # for v in stress_subset.values:
+    #     nid = v.nodeLabel
+    #     if nid in surface_node_labels:
+    #         s_by_node[nid].append(np.array(v.data, dtype=float))
+   
+    # ---- OLD --------------------------------------------------
+    # stress_subset = stress_field.getSubset(region=instance, position=ELEMENT_NODAL)
+
+    # ---- NEW : use integration-point data and re-associate it with the element nodes
+    stress_subset = stress_field.getSubset(region=instance, position=INTEGRATION_POINT)
+
+    # Pre-cache each element’s node list just once (fast)
+    elem_to_nodes = {e.label: e.connectivity for e in instance.elements}
+
+    # Replace the loop that fills s_by_node  ──►  just change the body
     s_by_node = defaultdict(list)
     for v in stress_subset.values:
-        nid = v.nodeLabel
-        if nid in surface_node_labels:
-            s_by_node[nid].append(np.array(v.data, dtype=float))
-
+        # Find the nodes of the element that owns this IP
+        for nid in elem_to_nodes[v.elementLabel]:
+            if nid in surface_node_labels:
+                s_by_node[nid].append(np.array(v.data, dtype=float))
+    
+    
     node_ids = sorted([nid for nid in surface_node_labels if nid in coord_map and nid in u2_by_node])
     node_ids.sort(key=lambda nid: (coord_map[nid][1], coord_map[nid][2], nid))
 
